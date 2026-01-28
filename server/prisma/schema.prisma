@@ -1,0 +1,134 @@
+// Prisma Schema for 小说阅读器
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id           String   @id @default(uuid())
+  email        String?  @unique
+  phone        String?  @unique
+  passwordHash String   @map("password_hash")
+  nickname     String   @default("读者")
+  avatar       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // 关联
+  bookshelves  Bookshelf[]
+  bookmarks    Bookmark[]
+  syncLogs     SyncLog[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+// 刷新令牌表
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// 书籍表 (缓存第三方数据)
+model Book {
+  id          String   @id @default(uuid())
+  sourceId    String   @map("source_id")
+  sourceType  String   @map("source_type") // 书源类型
+  title       String
+  author      String
+  cover       String?
+  description String?
+  category    String?
+  status      String   @default("ongoing") // ongoing, completed
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 关联
+  chapters    Chapter[]
+  bookshelves Bookshelf[]
+  bookmarks   Bookmark[]
+
+  @@unique([sourceId, sourceType])
+  @@map("books")
+}
+
+// 章节表
+model Chapter {
+  id           String   @id @default(uuid())
+  bookId       String   @map("book_id")
+  chapterIndex Int      @map("chapter_index")
+  title        String
+  content      String?  @db.Text
+  wordCount    Int      @default(0) @map("word_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  book      Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  bookmarks Bookmark[]
+
+  @@unique([bookId, chapterIndex])
+  @@map("chapters")
+}
+
+// 书架表 (用户收藏)
+model Bookshelf {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  bookId          String   @map("book_id")
+  lastChapter     Int      @default(0) @map("last_chapter")
+  lastPosition    Int      @default(0) @map("last_position") // 章节内位置
+  isTop           Boolean  @default(false) @map("is_top")
+  lastReadAt      DateTime? @map("last_read_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@map("bookshelves")
+}
+
+// 书签表
+model Bookmark {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  bookId    String   @map("book_id")
+  chapterId String   @map("chapter_id")
+  position  Int      @default(0)
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book    Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@map("bookmarks")
+}
+
+// 同步记录表
+model SyncLog {
+  id       String   @id @default(uuid())
+  userId   String   @map("user_id")
+  deviceId String   @map("device_id")
+  syncType String   @map("sync_type") // bookshelf, progress, bookmark, settings
+  syncData Json     @map("sync_data")
+  syncedAt DateTime @default(now()) @map("synced_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sync_logs")
+}
