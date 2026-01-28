@@ -6,6 +6,7 @@ import '../../features/bookshelf/presentation/pages/bookshelf_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/reader/presentation/pages/reader_page.dart';
+import '../../features/book_detail/presentation/pages/book_detail_page.dart';
 import '../../shared/widgets/main_scaffold.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -21,13 +22,28 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const LoginPage(),
     ),
 
+    // 书籍详情页面
+    GoRoute(
+      path: '/book/:sourceId/:bookId',
+      builder: (context, state) {
+        final sourceId = state.pathParameters['sourceId']!;
+        final bookId = state.pathParameters['bookId']!;
+        return BookDetailPage(sourceId: sourceId, bookId: bookId);
+      },
+    ),
+
     // 阅读器页面 (全屏)
     GoRoute(
-      path: '/reader/:bookId',
+      path: '/reader/:sourceId/:bookId/:chapterId',
       builder: (context, state) {
+        final sourceId = state.pathParameters['sourceId']!;
         final bookId = state.pathParameters['bookId']!;
-        final chapterIndex = int.tryParse(state.uri.queryParameters['chapter'] ?? '0') ?? 0;
-        return ReaderPage(bookId: bookId, initialChapter: chapterIndex);
+        final chapterId = state.pathParameters['chapterId']!;
+        return ReaderPage(
+          sourceId: sourceId,
+          bookId: bookId,
+          chapterId: chapterId,
+        );
       },
     ),
 
