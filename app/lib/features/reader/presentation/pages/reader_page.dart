@@ -1,172 +1,142 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../explore/providers/book_source_provider.dart';
 
-class ReaderPage extends StatefulWidget {
+class ReaderPage extends ConsumerStatefulWidget {
+  final String sourceId;
   final String bookId;
-  final int initialChapter;
+  final String chapterId;
 
   const ReaderPage({
     super.key,
+    required this.sourceId,
     required this.bookId,
-    this.initialChapter = 0,
+    required this.chapterId,
   });
 
   @override
-  State<ReaderPage> createState() => _ReaderPageState();
+  ConsumerState<ReaderPage> createState() => _ReaderPageState();
 }
 
-class _ReaderPageState extends State<ReaderPage> {
-  late PageController _pageController;
+class _ReaderPageState extends ConsumerState<ReaderPage> {
   bool _showControls = false;
-  int _currentChapter = 0;
-  int _currentPage = 0;
-  int _totalPages = 10;
+  String _currentChapterId = '';
 
   // 阅读设置
   double _fontSize = 18;
   double _lineHeight = 1.8;
-  Color _backgroundColor = const Color(0xFFF5F0E1); // 护眼黄
-
-  // 示例章节内容
-  final List<String> _chapters = [
-    '第一章 初入江湖',
-    '第二章 奇遇',
-    '第三章 修炼',
-    '第四章 试炼',
-    '第五章 突破',
-  ];
-
-  final String _sampleContent = '''
-    天色渐暗，夕阳的余晖洒在青石板路上，将整个小镇染成了一片金黄。
-
-    少年背着简单的行囊，踏上了这条未知的道路。他的眼中满是对未来的期待，却也带着一丝离家的惆怅。
-
-    "既然选择了这条路，就要走到底。"他在心中暗暗发誓。
-
-    远处的山峦层叠，云雾缭绕，仿佛隐藏着无数的秘密。传说在那深山之中，有着无数的机缘与危险。
-
-    少年深吸一口气，迈开了坚定的步伐。他知道，从这一刻起，他的人生将会完全不同。
-
-    路边的老树上，一只乌鸦发出沙哑的叫声，似乎在为他送行，又似乎在警告着什么。
-
-    但少年没有回头，他的目光始终望向前方，那片充满未知的世界。
-  ''';
+  Color _backgroundColor = const Color(0xFFF5F0E1);
 
   @override
   void initState() {
     super.initState();
-    _currentChapter = widget.initialChapter;
-    _pageController = PageController();
-
-    // 进入阅读模式：全屏沉浸式
+    _currentChapterId = widget.chapterId;
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
-    // 退出时恢复系统UI
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final contentAsync = ref.watch(chapterContentProvider((
+      sourceId: widget.sourceId,
+      bookId: widget.bookId,
+      chapterId: _currentChapterId,
+    )));
+    final chaptersAsync = ref.watch(chapterListProvider((
+      sourceId: widget.sourceId,
+      bookId: widget.bookId,
+    )));
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: GestureDetector(
         onTap: _handleTap,
         child: Stack(
           children: [
-            // 阅读内容
-            _buildReaderContent(),
+            contentAsync.when(
+              data: (content) => _buildReaderContent(content.title, content.content),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                    const SizedBox(height: 16),
+                    Text('加载失败: $e'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => ref.invalidate(chapterContentProvider((
+                        sourceId: widget.sourceId,
+                        bookId: widget.bookId,
+                        chapterId: _currentChapterId,
+                      ))),
+                      child: const Text('重试'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
-            // 顶部控制栏
-            if (_showControls) _buildTopBar(),
+            if (_showControls)
+              _buildTopBar(contentAsync.valueOrNull?.title ?? '加载中...'),
 
-            // 底部控制栏
-            if (_showControls) _buildBottomBar(),
-
-            // 设置面板
-            if (_showControls) _buildSettingsPanel(),
+            if (_showControls)
+              _buildBottomBar(chaptersAsync.valueOrNull ?? []),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildReaderContent() {
-    return PageView.builder(
-      controller: _pageController,
-      onPageChanged: (page) {
-        setState(() {
-          _currentPage = page;
-        });
-      },
-      itemCount: _totalPages,
-      itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 章节标题
-              if (index == 0)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: Text(
-                    _chapters[_currentChapter],
-                    style: TextStyle(
-                      fontSize: _fontSize + 4,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-
-              // 正文内容
-              Expanded(
-                child: Text(
-                  _sampleContent,
-                  style: TextStyle(
-                    fontSize: _fontSize,
-                    height: _lineHeight,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-
-              // 页码
-              Center(
-                child: Text(
-                  '${index + 1} / $_totalPages',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ),
-            ],
+  Widget _buildReaderContent(String title, String content) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: _fontSize + 4,
+              fontWeight: FontWeight.bold,
+              color: _backgroundColor == const Color(0xFF1C1C1E)
+                  ? Colors.white70
+                  : Colors.black87,
+            ),
           ),
-        );
-      },
+          const SizedBox(height: 24),
+          Text(
+            content,
+            style: TextStyle(
+              fontSize: _fontSize,
+              height: _lineHeight,
+              color: _backgroundColor == const Color(0xFF1C1C1E)
+                  ? Colors.white70
+                  : Colors.black87,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(String title) {
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
       child: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.black54,
-              Colors.transparent,
-            ],
+            colors: [Colors.black54, Colors.transparent],
           ),
         ),
         child: SafeArea(
@@ -179,7 +149,7 @@ class _ReaderPageState extends State<ReaderPage> {
               ),
               Expanded(
                 child: Text(
-                  _chapters[_currentChapter],
+                  title,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -192,7 +162,9 @@ class _ReaderPageState extends State<ReaderPage> {
               IconButton(
                 icon: const Icon(Icons.bookmark_border, color: Colors.white),
                 onPressed: () {
-                  // TODO: Add bookmark
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('已添加书签')),
+                  );
                 },
               ),
             ],
@@ -202,20 +174,17 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
-  Widget _buildBottomBar() {
+  Widget _buildBottomBar(List chapters) {
     return Positioned(
       bottom: 0,
       left: 0,
       right: 0,
       child: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [
-              Colors.black54,
-              Colors.transparent,
-            ],
+            colors: [Colors.black54, Colors.transparent],
           ),
         ),
         child: SafeArea(
@@ -225,36 +194,14 @@ class _ReaderPageState extends State<ReaderPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 进度条
-                Row(
-                  children: [
-                    Text(
-                      '${_currentPage + 1}',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                    Expanded(
-                      child: Slider(
-                        value: _currentPage.toDouble(),
-                        min: 0,
-                        max: (_totalPages - 1).toDouble(),
-                        onChanged: (value) {
-                          _pageController.jumpToPage(value.toInt());
-                        },
-                      ),
-                    ),
-                    Text(
-                      '$_totalPages',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ],
-                ),
-
-                // 功能按钮
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
+                    _buildBottomButton(Icons.skip_previous, '上一章', () {
+                      _navigateChapter(chapters, -1);
+                    }),
                     _buildBottomButton(Icons.list, '目录', () {
-                      _showChapterList();
+                      _showChapterList(chapters);
                     }),
                     _buildBottomButton(Icons.nightlight_round, '夜间', () {
                       setState(() {
@@ -266,8 +213,8 @@ class _ReaderPageState extends State<ReaderPage> {
                     _buildBottomButton(Icons.text_fields, '字体', () {
                       _showFontSettings();
                     }),
-                    _buildBottomButton(Icons.download, '缓存', () {
-                      // TODO: Download chapters
+                    _buildBottomButton(Icons.skip_next, '下一章', () {
+                      _navigateChapter(chapters, 1);
                     }),
                   ],
                 ),
@@ -279,6 +226,23 @@ class _ReaderPageState extends State<ReaderPage> {
     );
   }
 
+  void _navigateChapter(List chapters, int direction) {
+    if (chapters.isEmpty) return;
+
+    final currentIndex = chapters.indexWhere((c) => c.id == _currentChapterId);
+    final newIndex = currentIndex + direction;
+
+    if (newIndex >= 0 && newIndex < chapters.length) {
+      setState(() {
+        _currentChapterId = chapters[newIndex].id;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(direction > 0 ? '已是最后一章' : '已是第一章')),
+      );
+    }
+  }
+
   Widget _buildBottomButton(IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
@@ -287,17 +251,10 @@ class _ReaderPageState extends State<ReaderPage> {
         children: [
           Icon(icon, color: Colors.white, size: 24),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-          ),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
         ],
       ),
     );
-  }
-
-  Widget _buildSettingsPanel() {
-    return const SizedBox.shrink();
   }
 
   void _handleTap() {
@@ -306,7 +263,7 @@ class _ReaderPageState extends State<ReaderPage> {
     });
   }
 
-  void _showChapterList() {
+  void _showChapterList(List chapters) {
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -315,23 +272,25 @@ class _ReaderPageState extends State<ReaderPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '目录',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                const Text('目录', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Text('共 ${chapters.length} 章', style: TextStyle(color: Colors.grey[600])),
+              ],
             ),
             const SizedBox(height: 16),
             Expanded(
               child: ListView.builder(
-                itemCount: _chapters.length,
+                itemCount: chapters.length,
                 itemBuilder: (context, index) {
+                  final chapter = chapters[index];
+                  final isCurrentChapter = chapter.id == _currentChapterId;
                   return ListTile(
                     title: Text(
-                      _chapters[index],
+                      chapter.title,
                       style: TextStyle(
-                        color: index == _currentChapter
+                        color: isCurrentChapter
                             ? Theme.of(context).colorScheme.primary
                             : null,
                       ),
@@ -339,10 +298,8 @@ class _ReaderPageState extends State<ReaderPage> {
                     onTap: () {
                       Navigator.pop(context);
                       setState(() {
-                        _currentChapter = index;
-                        _currentPage = 0;
+                        _currentChapterId = chapter.id;
                       });
-                      _pageController.jumpToPage(0);
                     },
                   );
                 },
@@ -364,10 +321,7 @@ class _ReaderPageState extends State<ReaderPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '字体大小',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+              const Text('字体大小', style: TextStyle(fontWeight: FontWeight.w600)),
               Slider(
                 value: _fontSize,
                 min: 12,
@@ -375,17 +329,12 @@ class _ReaderPageState extends State<ReaderPage> {
                 divisions: 20,
                 label: _fontSize.toInt().toString(),
                 onChanged: (value) {
-                  setModalState(() {
-                    _fontSize = value;
-                  });
+                  setModalState(() => _fontSize = value);
                   setState(() {});
                 },
               ),
               const SizedBox(height: 16),
-              const Text(
-                '行间距',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+              const Text('行间距', style: TextStyle(fontWeight: FontWeight.w600)),
               Slider(
                 value: _lineHeight,
                 min: 1.2,
@@ -393,17 +342,12 @@ class _ReaderPageState extends State<ReaderPage> {
                 divisions: 13,
                 label: _lineHeight.toStringAsFixed(1),
                 onChanged: (value) {
-                  setModalState(() {
-                    _lineHeight = value;
-                  });
+                  setModalState(() => _lineHeight = value);
                   setState(() {});
                 },
               ),
               const SizedBox(height: 16),
-              const Text(
-                '背景颜色',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+              const Text('背景颜色', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -426,9 +370,7 @@ class _ReaderPageState extends State<ReaderPage> {
     final isSelected = _backgroundColor == color;
     return GestureDetector(
       onTap: () {
-        setModalState(() {
-          _backgroundColor = color;
-        });
+        setModalState(() => _backgroundColor = color);
         setState(() {});
       },
       child: Column(
