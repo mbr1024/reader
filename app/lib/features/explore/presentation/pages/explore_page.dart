@@ -171,121 +171,71 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
     return Column(
       children: [
         SizedBox(
-          height: 170, // 增加高度
+          height: 150, // 稍微减小高度
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) => setState(() => _currentBanner = index),
             itemCount: MockData.bannerBooks.length,
             itemBuilder: (context, index) {
               final book = MockData.bannerBooks[index];
-              final isCurrent = index == _currentBanner;
-              
-              return AnimatedScale(
-                scale: 1.0, // 暂时不缩放，保持整齐
-                duration: const Duration(milliseconds: 300),
-                child: GestureDetector(
-                  onTap: () => context.push('/book/demo/${book.id}'),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _getBannerColor(index).withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Stack(
-                        children: [
-                          // 背景渐变
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  _getBannerColor(index),
-                                  _getBannerColor(index).withOpacity(0.7),
+              return GestureDetector(
+                onTap: () => context.push('/book/demo/${book.id}'),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: _getBannerColor(index), // 纯色背景，更简洁
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Stack(
+                      children: [
+                        // 内容布局
+                        Row(
+                          children: [
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(book.category, style: const TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 8),
+                                  Text(book.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                                  const SizedBox(height: 4),
+                                  Text(book.description, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, color: Colors.white70)),
                                 ],
                               ),
                             ),
-                          ),
-                          
-                          // 装饰背景圆
-                          Positioned(
-                            right: -30,
-                            top: -30,
-                            child: Container(
-                              width: 150,
-                              height: 150,
+                            const SizedBox(width: 16),
+                            // 封面
+                            Container(
+                              margin: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                shape: BoxShape.circle,
+                                borderRadius: BorderRadius.circular(6),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Image.asset(
+                                  book.cover,
+                                  width: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(width: 80, color: Colors.white24),
+                                ),
                               ),
                             ),
-                          ),
-                          
-                          // 内容布局
-                          Row(
-                            children: [
-                              const SizedBox(width: 24),
-                              Expanded(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.25),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 0.5),
-                                      ),
-                                      child: Text(book.category, style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(book.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
-                                    const SizedBox(height: 6),
-                                    Text(book.author, style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9))),
-                                    const SizedBox(height: 8),
-                                    Text(book.description, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.75))),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              // 封面
-                              Container(
-                                margin: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 10,
-                                      offset: const Offset(2, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.asset(
-                                    book.cover,
-                                    width: 100,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(width: 100, color: Colors.white24),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                            ],
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 20),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -293,20 +243,19 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
             },
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         // 指示器
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(MockData.bannerBooks.length, (index) {
             final isSelected = _currentBanner == index;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: isSelected ? 20 : 6,
-              height: 6,
-              margin: const EdgeInsets.symmetric(horizontal: 3),
+            return Container(
+              width: isSelected ? 12 : 6,
+              height: 4,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.border,
-                borderRadius: BorderRadius.circular(3),
+                color: isSelected ? AppColors.primary : const Color(0xFFE0E0E0),
+                borderRadius: BorderRadius.circular(2),
               ),
             );
           }),
@@ -316,44 +265,28 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
   }
 
   Color _getBannerColor(int index) {
-    // 更高端的莫兰迪/大厂色系
+    // 经典的番茄红风格背景色，或柔和的深色背景
     final colors = [
-      const Color(0xFF1677FF), // 阿里蓝
-      const Color(0xFF00B96B), // 极客绿
-      const Color(0xFF722ED1), // 酱紫
-      const Color(0xFFFA541C), // 火山红
+      const Color(0xFFD64438), // 深番茄红
+      const Color(0xFFE67E22), // 暖橙
+      const Color(0xFF2C3E50), // 深蓝灰
+      const Color(0xFF27AE60), // 沉稳绿
     ];
     return colors[index % colors.length];
   }
 
   Widget _buildCategories() {
     final categories = [
-      {
-        'name': '排行榜', 
-        'icon': Icons.emoji_events, 
-        'color': const Color(0xFFFFC043),
-        'route': '/rank', // 排行榜路由
-      },
-      {'name': '玄幻', 'icon': Icons.auto_awesome, 'color': const Color(0xFF722ED1), 'route': '/explore/category/1'},
-      {'name': '仙侠', 'icon': Icons.flight_takeoff, 'color': const Color(0xFF13C2C2), 'route': '/explore/category/2'},
-      {'name': '都市', 'icon': Icons.location_city, 'color': const Color(0xFF1677FF), 'route': '/explore/category/3'},
-      {'name': '科幻', 'icon': Icons.rocket_launch, 'color': const Color(0xFF2F54EB), 'route': '/explore/category/4'},
+      {'name': '排行榜', 'icon': Icons.emoji_events, 'color': const Color(0xFFFFCC00), 'route': '/rank'},
+      {'name': '男频', 'icon': Icons.male, 'color': const Color(0xFF4A90E2), 'route': '/explore/category/1'},
+      {'name': '女频', 'icon': Icons.female, 'color': const Color(0xFFFF5E7D), 'route': '/explore/category/2'},
+      {'name': '完本', 'icon': Icons.task_alt, 'color': const Color(0xFF2ECC71), 'route': '/explore/category/3'},
+      {'name': '分类', 'icon': Icons.category, 'color': const Color(0xFF95A5A6), 'route': '/explore/category/4'},
     ];
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      color: AppColors.surface, // 白色背景
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: categories.map((cat) => _buildCategoryItem(cat)).toList(),
@@ -370,20 +303,14 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
       },
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: (cat['color'] as Color).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(cat['icon'] as IconData, color: cat['color'] as Color, size: 26),
-          ),
-          const SizedBox(height: 8),
+          // 移除厚重的圆角背景，改用简单的图标
+          Icon(cat['icon'] as IconData, color: cat['color'] as Color, size: 32),
+          const SizedBox(height: 6),
           Text(
             cat['name'] as String, 
             style: const TextStyle(
               fontSize: 12, 
-              fontWeight: FontWeight.w600, 
+              fontWeight: FontWeight.w500, 
               color: AppColors.textPrimary
             )
           ),

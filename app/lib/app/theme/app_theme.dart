@@ -4,36 +4,36 @@ import 'package:flutter/material.dart';
 /// 设计理念：高端、舒适、科技感
 /// 主色调：蔚蓝/青色 (Blue/Teal)
 class AppColors {
-  // 品牌色 - 蔚蓝
-  static const Color primary = Color(0xFF1677FF);       // 阿里蓝/蚂蚁蓝风格
-  static const Color primaryLight = Color(0xFF4096FF);  // 浅蓝
-  static const Color primaryDark = Color(0xFF0958D9);   // 深蓝
-  static const Color secondary = Color(0xFF13C2C2);     // 明青色 (用于点缀)
+  // 品牌色 - 番茄红
+  static const Color primary = Color(0xFFFF3B30);       // 番茄红/京东红风格
+  static const Color primaryLight = Color(0xFFFF6B63);  // 浅红
+  static const Color primaryDark = Color(0xFFC41C15);   // 深红
+  static const Color secondary = Color(0xFFFFCC00);     // 金黄色 (用于点缀/VIP)
   
   // 背景色 - 极简灰白
-  static const Color background = Color(0xFFF5F7FA);    // 极浅蓝灰背景，更有质感
+  static const Color background = Color(0xFFF7F8FA);    // 极浅灰背景
   static const Color surface = Color(0xFFFFFFFF);       // 纯白
-  static const Color surfaceVariant = Color(0xFFF0F5FF); // 品牌色相近的浅色容器
+  static const Color surfaceVariant = Color(0xFFFFF0F0); // 品牌色相近的浅色容器
   
   // 文字色
-  static const Color textPrimary = Color(0xFF1F1F1F);   // 主要文字
-  static const Color textSecondary = Color(0xFF595959); // 次要文字
-  static const Color textMuted = Color(0xFF8C8C8C);     // 辅助文字
-  static const Color textHint = Color(0xFFBFBFBF);      // 提示文字
+  static const Color textPrimary = Color(0xFF222222);   // 主要文字
+  static const Color textSecondary = Color(0xFF666666); // 次要文字
+  static const Color textMuted = Color(0xFF999999);     // 辅助文字
+  static const Color textHint = Color(0xFFCCCCCC);      // 提示文字
   
   // 边框与分割
-  static const Color border = Color(0xFFD9D9D9);        // 一般边框
+  static const Color border = Color(0xFFE5E5E5);        // 一般边框
   static const Color divider = Color(0xFFF0F0F0);       // 分割线
   
   // 功能色
-  static const Color success = Color(0xFF52C41A);       // 成功绿
-  static const Color warning = Color(0xFFFAAD14);       // 警告黄  
-  static const Color error = Color(0xFFFF4D4F);         // 错误红
+  static const Color success = Color(0xFF34C759);       // 成功绿
+  static const Color warning = Color(0xFFFF9500);       // 警告黄  
+  static const Color error = Color(0xFFFF3B30);         // 错误红
   
-  // 阅读主题色 - 保持舒适
+  // 阅读主题色
   static const Color readingWhite = Color(0xFFFAF9DE);  // 羊皮纸色
   static const Color readingGreen = Color(0xFFC7EDCC);  // 护眼绿
-  static const Color readingDark = Color(0xFF1A1A1A);   // 夜间模式
+  static const Color readingDark = Color(0xFF1C1C1E);   // 夜间模式
 }
 
 // 兼容旧的 TomatoColors 引用，方便过渡，实际指向新颜色

@@ -40,39 +40,23 @@ class MyPage extends StatelessWidget {
 
   Widget _buildUserCard(BuildContext context, bool isLoggedIn) {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
       child: Row(
         children: [
           // 头像
           Container(
-            width: 64,
-            height: 64,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+              border: Border.all(color: AppColors.border, width: 2),
+              image: const DecorationImage(
+                image: AssetImage('assets/images/logo.png'), // 假设有个logo或者默认头像
+                fit: BoxFit.cover,
+              ),
             ),
-            child: const Icon(
-              Icons.person,
-              size: 36,
-              color: Colors.white,
-            ),
+            child: const Icon(Icons.person, size: 40, color: AppColors.textHint), // Fallback
           ),
           const SizedBox(width: 20),
           // 用户信息
@@ -81,38 +65,35 @@ class MyPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isLoggedIn ? '读者用户' : '点击登录',
+                  isLoggedIn ? '书友_9527' : '点击登录',
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  isLoggedIn ? '同步您的阅读进度' : '登录后可同步阅读记录',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.9),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE4E4), // 浅红背景
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    '普通用户',
+                    style: TextStyle(fontSize: 11, color: AppColors.primary),
                   ),
                 ),
               ],
             ),
           ),
           // 箭头
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
+          if (!isLoggedIn)
+            const Icon(
               Icons.arrow_forward_ios,
-              size: 14,
-              color: Colors.white,
+              size: 16,
+              color: AppColors.textHint,
             ),
-          ),
         ],
       ),
     );
@@ -120,26 +101,20 @@ class MyPage extends StatelessWidget {
 
   Widget _buildStatsSection(int bookCount) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      // 移除阴影，使用更轻的背景或透明
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          _buildStatItem('$bookCount', '书架藏书'),
+          _buildStatItem('$bookCount', '书架'),
           _buildStatDivider(),
-          _buildStatItem('0', '阅读时长(h)'),
+          _buildStatItem('12', '读过'),
           _buildStatDivider(),
-          _buildStatItem('0', '阅读天数'),
+          _buildStatItem('5.2h', '时长'),
         ],
       ),
     );
@@ -185,14 +160,8 @@ class MyPage extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        // 移除阴影
       ),
       child: Column(
         children: [
@@ -303,14 +272,8 @@ class MyPage extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        // 移除阴影
       ),
       child: Column(
         children: [

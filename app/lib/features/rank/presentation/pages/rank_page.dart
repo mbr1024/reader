@@ -88,39 +88,34 @@ class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin
     return GestureDetector(
       onTap: () => context.push('/book/demo/${book.id}'),
       child: Container(
-        height: 120,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+        height: 110,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        color: Colors.transparent, // 透明背景
         child: Row(
           children: [
             // 排名
             SizedBox(
-              width: 48,
+              width: 40,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (index < 3)
-                    Icon(
-                      Icons.emoji_events, 
-                      color: index == 0 ? const Color(0xFFFFD700) : (index == 1 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32)),
-                      size: 28
+                    Text(
+                      '${index + 1}', 
+                      style: TextStyle(
+                        fontSize: 24, 
+                        fontWeight: FontWeight.bold, 
+                        fontStyle: FontStyle.italic,
+                        color: index == 0 ? const Color(0xFFFF3B30) : (index == 1 ? const Color(0xFFFF9500) : const Color(0xFFFFCC00))
+                      )
                     )
                   else
                     Text(
                       '${index + 1}', 
                       style: const TextStyle(
                         fontSize: 18, 
-                        fontWeight: FontWeight.bold, 
-                        color: AppColors.textSecondary
+                        fontWeight: FontWeight.w500, 
+                        color: AppColors.textMuted
                       )
                     ),
                 ],
@@ -129,72 +124,69 @@ class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin
             
             // 封面
             Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
+              margin: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: AppColors.border, width: 0.5),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(4),
                 child: Image.asset(
                   book.cover,
-                  width: 72,
-                  height: 96,
+                  width: 66,
+                  height: 88,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(width: 72, color: AppColors.surfaceVariant),
+                  errorBuilder: (_, __, ___) => Container(width: 66, color: AppColors.surfaceVariant),
                 ),
               ),
             ),
             
-            const SizedBox(width: 16),
+            const SizedBox(width: 8),
             
             // 信息
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      book.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                    ),
-                    Text(
-                      '${book.author} · ${book.category} · ${book.status}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                    ),
-                    Text(
-                      book.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // 热度值
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('热度', style: TextStyle(fontSize: 10, color: AppColors.textHint)),
-                  const SizedBox(height: 2),
                   Text(
-                    '${(100 - index * 2).toStringAsFixed(1)}万', 
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary)
+                    book.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    book.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        book.author,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          book.category, 
+                          style: const TextStyle(fontSize: 10, color: AppColors.primary)
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${(100 - index * 2).toStringAsFixed(1)}万人气', 
+                        style: const TextStyle(fontSize: 11, color: AppColors.error)
+                      ),
+                    ],
                   ),
                 ],
               ),
