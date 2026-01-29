@@ -6,12 +6,16 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'app/router/app_router.dart';
 import 'app/theme/app_theme.dart';
+import 'core/services/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 初始化 Hive
   await Hive.initFlutter();
+  
+  // 初始化存储服务
+  await StorageService.instance.init();
 
   // 设置状态栏样式
   SystemChrome.setSystemUIOverlayStyle(
@@ -47,9 +51,9 @@ class ReaderApp extends StatelessWidget {
         return MaterialApp.router(
           title: '小说阅读器',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.system,
+          // 使用番茄小说风格主题
+          theme: AppTheme.tomatoTheme,
+          themeMode: ThemeMode.light,
           routerConfig: appRouter,
         );
       },
