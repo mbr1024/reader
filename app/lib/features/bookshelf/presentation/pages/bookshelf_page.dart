@@ -183,47 +183,26 @@ class _BookshelfPageState extends State<BookshelfPage> {
     final recent = _books.first;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      height: 140,
+      height: 120,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.surface, // 白色背景
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
       ),
       child: Stack(
         children: [
-          Positioned(
-            right: -20,
-            bottom: -20,
-            child: Icon(Icons.menu_book, size: 120, color: Colors.white.withOpacity(0.1)),
-          ),
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppColors.border, width: 0.5),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: _buildCover(recent.cover, recent.title, 65, 90),
+                    borderRadius: BorderRadius.circular(4),
+                    child: _buildCover(recent.cover, recent.title, 55, 75), // 稍微缩小
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -232,26 +211,19 @@ class _BookshelfPageState extends State<BookshelfPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          '继续阅读',
-                          style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
-                        ),
+                      const Text(
+                        '继续阅读',
+                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         recent.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -259,41 +231,21 @@ class _BookshelfPageState extends State<BookshelfPage> {
                         recent.lastChapterTitle ?? '开始新的阅读',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9)),
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                ElevatedButton(
+                  onPressed: () => context.push('/book/${recent.sourceId}/${recent.bookId}'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.surfaceVariant, // 浅红背景
+                    foregroundColor: AppColors.primary,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: () => context.push('/book/${recent.sourceId}/${recent.bookId}'),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Text(
-                          '阅读',
-                          style: TextStyle(
-                            fontSize: 13, 
-                            color: AppColors.primary, 
-                            fontWeight: FontWeight.bold
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: const Text('阅读'),
                 ),
               ],
             ),
@@ -313,17 +265,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.border.withOpacity(0.5)), // 轻微边框
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
                 child: _buildCover(book.cover, book.title, double.infinity, double.infinity),
               ),
             ),
@@ -335,7 +281,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500, // 稍微减弱字重
               color: AppColors.textPrimary,
             ),
           ),
@@ -344,7 +290,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
             '读至: ${book.lastChapterTitle ?? "未开始"}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            style: const TextStyle(fontSize: 10, color: AppColors.textHint), // 减小字号
           ),
         ],
       ),
