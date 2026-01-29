@@ -1,146 +1,444 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../app/theme/app_theme.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/models/bookshelf_item.dart';
+import '../../../../core/data/mock_data.dart';
 
-class BookshelfPage extends StatelessWidget {
+class BookshelfPage extends StatefulWidget {
   const BookshelfPage({super.key});
+
+  @override
+  State<BookshelfPage> createState() => _BookshelfPageState();
+}
+
+class _BookshelfPageState extends State<BookshelfPage> {
+  final _storage = StorageService.instance;
+  List<BookshelfItem> _books = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _initBookshelf();
+  }
+
+  Future<void> _initBookshelf() async {
+    // 如果书架为空，添加默认数据
+    if (_storage.getBookshelf().isEmpty) {
+      for (final book in MockData.defaultBookshelf) {
+        await _storage.addToBookshelf(BookshelfItem(
+          bookId: book.id,
+          sourceId: 'demo',
+          title: book.title,
+          author: book.author,
+          cover: book.cover,
+          category: book.category,
+          addedAt: DateTime.now(),
+        ));
+      }
+    }
+    _loadBookshelf();
+  }
+
+  void _loadBookshelf() {
+    setState(() {
+      _books = _storage.getBookshelf();
+      _books.sort((a, b) {
+        if (a.isTop != b.isTop) return a.isTop ? -1 : 1;
+        final aTime = a.lastReadAt ?? a.addedAt;
+        final bTime = b.lastReadAt ?? b.addedAt;
+        return bTime.compareTo(aTime);
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('书架'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              context.go('/explore');
-            },
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: _books.isEmpty ? _buildEmptyState() : _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async => _loadBookshelf(),
+      child: CustomScrollView(
+        slivers: [
+          // 顶部标题栏
+          SliverToBoxAdapter(child: _buildHeader()),
+          
+          // 最近阅读
+          if (_books.isNotEmpty)
+            SliverToBoxAdapter(child: _buildRecentReading()),
+          
+          // 书架标题
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '我的书架',
+                    style: AppTheme.lightTheme.textTheme.titleMedium,
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {},
+                    child: const Icon(Icons.sort, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // 书籍网格
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.6,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 24,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildBookItem(_books[index]),
+                childCount: _books.length,
+              ),
+            ),
+          ),
+          
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.menu_book, size: 80, color: AppColors.textHint.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          const Text(
+            '书架空空如也',
+            style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => context.go('/explore'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ),
+            child: const Text('去书城逛逛', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
-      body: _buildBookshelfContent(context),
     );
   }
 
-  Widget _buildBookshelfContent(BuildContext context) {
-    // 示例数据
-    final books = [
-      {'title': '斗破苍穹', 'author': '天蚕土豆', 'progress': '第100章'},
-      {'title': '完美世界', 'author': '辰东', 'progress': '第50章'},
-      {'title': '遮天', 'author': '辰东', 'progress': '第200章'},
-    ];
-
-    if (books.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.library_books_outlined,
-              size: 80,
-              color: Colors.grey[300],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '书架空空如也',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[500],
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                context.go('/explore');
-              },
-              child: const Text('去发现好书'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.55,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 16,
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          const Text(
+            '书架',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.search, size: 28),
+            color: AppColors.textPrimary,
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert, size: 28),
+            color: AppColors.textPrimary,
+            onPressed: () {},
+          ),
+        ],
       ),
-      itemCount: books.length,
-      itemBuilder: (context, index) {
-        final book = books[index];
-        return _BookCard(
-          title: book['title']!,
-          author: book['author']!,
-          progress: book['progress']!,
-          onTap: () {
-            context.push('/reader/book_$index');
-          },
-        );
-      },
     );
   }
-}
 
-class _BookCard extends StatelessWidget {
-  final String title;
-  final String author;
-  final String progress;
-  final VoidCallback onTap;
+  Widget _buildRecentReading() {
+    final recent = _books.first;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      height: 140,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -20,
+            bottom: -20,
+            child: Icon(Icons.menu_book, size: 120, color: Colors.white.withOpacity(0.1)),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _buildCover(recent.cover, recent.title, 65, 90),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          '继续阅读',
+                          style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        recent.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        recent.lastChapterTitle ?? '开始新的阅读',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9)),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => context.push('/book/${recent.sourceId}/${recent.bookId}'),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text(
+                          '阅读',
+                          style: TextStyle(
+                            fontSize: 13, 
+                            color: AppColors.primary, 
+                            fontWeight: FontWeight.bold
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  const _BookCard({
-    required this.title,
-    required this.author,
-    required this.progress,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBookItem(BookshelfItem book) {
     return GestureDetector(
-      onTap: onTap,
+      onLongPress: () => _showBookOptions(book),
+      onTap: () => context.push('/book/${book.sourceId}/${book.bookId}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 封面占位
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              child: Center(
-                child: Icon(
-                  Icons.book,
-                  size: 40,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _buildCover(book.cover, book.title, double.infinity, double.infinity),
               ),
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            title,
+            book.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
           Text(
-            progress,
+            '读至: ${book.lastChapterTitle ?? "未开始"}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[500],
-            ),
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCover(String? url, String title, double width, double height) {
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('assets/')) {
+        return Image.asset(
+          url,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholderCover(title, width, height),
+        );
+      }
+      
+      return CachedNetworkImage(
+        imageUrl: url,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => Container(
+          width: width,
+          height: height,
+          color: AppColors.surfaceVariant,
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+        errorWidget: (_, __, ___) => _buildPlaceholderCover(title, width, height),
+      );
+    }
+    return _buildPlaceholderCover(title, width, height);
+  }
+
+  Widget _buildPlaceholderCover(String title, double width, double height) {
+    return Container(
+      width: width,
+      height: height,
+      color: AppColors.surfaceVariant,
+      padding: const EdgeInsets.all(8),
+      child: Center(
+        child: Text(
+          title.isNotEmpty ? title[0] : '书',
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showBookOptions(BookshelfItem book) async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.vertical_align_top, color: AppColors.primary),
+              title: Text(book.isTop ? '取消置顶' : '置顶书籍'),
+              onTap: () async {
+                final newBook = BookshelfItem(
+                  bookId: book.bookId,
+                  sourceId: book.sourceId,
+                  title: book.title,
+                  author: book.author,
+                  cover: book.cover,
+                  category: book.category,
+                  addedAt: book.addedAt,
+                  lastReadAt: book.lastReadAt,
+                  lastChapterId: book.lastChapterId,
+                  lastChapterTitle: book.lastChapterTitle,
+                  isTop: !book.isTop,
+                );
+                await _storage.addToBookshelf(newBook);
+                _loadBookshelf();
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: AppColors.error),
+              title: const Text('移除书架', style: TextStyle(color: AppColors.error)),
+              onTap: () async {
+                await _storage.removeFromBookshelf(book.bookId);
+                _loadBookshelf();
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

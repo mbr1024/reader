@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../explore/providers/book_source_provider.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/models/reading_progress.dart';
+import '../../../../core/models/reader_settings.dart';
 
 class ReaderPage extends ConsumerStatefulWidget {
   final String sourceId;
@@ -22,21 +25,78 @@ class ReaderPage extends ConsumerStatefulWidget {
 class _ReaderPageState extends ConsumerState<ReaderPage> {
   bool _showControls = false;
   String _currentChapterId = '';
+  int _currentChapterIndex = 0;
+  String _currentChapterTitle = '';
+  final ScrollController _scrollController = ScrollController();
+  
+  // 存储服务
+  final _storage = StorageService.instance;
 
   // 阅读设置
-  double _fontSize = 18;
-  double _lineHeight = 1.8;
-  Color _backgroundColor = const Color(0xFFF5F0E1);
+  late double _fontSize;
+  late double _lineHeight;
+  late Color _backgroundColor;
 
   @override
   void initState() {
     super.initState();
-    _currentChapterId = widget.chapterId;
+    _loadSettings();
+    _loadProgress();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  void _loadSettings() {
+    final settings = _storage.getSettings();
+    _fontSize = settings.fontSize;
+    _lineHeight = settings.lineHeight;
+    _backgroundColor = Color(settings.backgroundColorValue);
+  }
+
+  void _loadProgress() {
+    final progress = _storage.getProgress(widget.bookId);
+    if (progress != null) {
+      // 从保存的进度恢复
+      _currentChapterId = progress.chapterId;
+      _currentChapterIndex = progress.chapterIndex;
+      _currentChapterTitle = progress.chapterTitle;
+      // 恢复滚动位置
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients && progress.scrollPosition > 0) {
+          _scrollController.jumpTo(progress.scrollPosition);
+        }
+      });
+    } else {
+      // 使用传入的章节ID
+      _currentChapterId = widget.chapterId;
+    }
+  }
+
+  Future<void> _saveProgress() async {
+    final progress = ReadingProgress(
+      bookId: widget.bookId,
+      sourceId: widget.sourceId,
+      chapterId: _currentChapterId,
+      chapterTitle: _currentChapterTitle,
+      chapterIndex: _currentChapterIndex,
+      scrollPosition: _scrollController.hasClients ? _scrollController.offset : 0,
+      updatedAt: DateTime.now(),
+    );
+    await _storage.saveProgress(progress);
+  }
+
+  Future<void> _saveSettings() async {
+    final settings = ReaderSettings(
+      fontSize: _fontSize,
+      lineHeight: _lineHeight,
+      backgroundColorValue: _backgroundColor.toARGB32(),
+    );
+    await _storage.saveSettings(settings);
   }
 
   @override
   void dispose() {
+    _saveProgress(); // 退出时保存进度
+    _scrollController.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -60,7 +120,11 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         child: Stack(
           children: [
             contentAsync.when(
-              data: (content) => _buildReaderContent(content.title, content.content),
+              data: (content) {
+                // 更新当前章节标题
+                _currentChapterTitle = content.title;
+                return _buildReaderContent(content.title, content.content);
+              },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
                 child: Column(
@@ -96,6 +160,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildReaderContent(String title, String content) {
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,7 +210,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  _saveProgress();
+                  Navigator.pop(context);
+                },
               ),
               Expanded(
                 child: Text(
@@ -209,6 +277,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                             ? const Color(0xFFF5F0E1)
                             : const Color(0xFF1C1C1E);
                       });
+                      _saveSettings();
                     }),
                     _buildBottomButton(Icons.text_fields, '字体', () {
                       _showFontSettings();
@@ -233,9 +302,14 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     final newIndex = currentIndex + direction;
 
     if (newIndex >= 0 && newIndex < chapters.length) {
+      _saveProgress(); // 切换章节前保存进度
       setState(() {
         _currentChapterId = chapters[newIndex].id;
+        _currentChapterIndex = newIndex;
+        _currentChapterTitle = chapters[newIndex].title;
       });
+      // 切换章节后滚动到顶部
+      _scrollController.jumpTo(0);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(direction > 0 ? '已是最后一章' : '已是第一章')),
@@ -297,9 +371,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                     ),
                     onTap: () {
                       Navigator.pop(context);
+                      _saveProgress();
                       setState(() {
                         _currentChapterId = chapter.id;
+                        _currentChapterIndex = index;
+                        _currentChapterTitle = chapter.title;
                       });
+                      _scrollController.jumpTo(0);
                     },
                   );
                 },
@@ -332,6 +410,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   setModalState(() => _fontSize = value);
                   setState(() {});
                 },
+                onChangeEnd: (_) => _saveSettings(),
               ),
               const SizedBox(height: 16),
               const Text('行间距', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -345,6 +424,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   setModalState(() => _lineHeight = value);
                   setState(() {});
                 },
+                onChangeEnd: (_) => _saveSettings(),
               ),
               const SizedBox(height: 16),
               const Text('背景颜色', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -372,6 +452,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       onTap: () {
         setModalState(() => _backgroundColor = color);
         setState(() {});
+        _saveSettings();
       },
       child: Column(
         children: [
