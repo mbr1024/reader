@@ -39,62 +39,75 @@ class MyPage extends StatelessWidget {
   }
 
   Widget _buildUserCard(BuildContext context, bool isLoggedIn) {
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-      child: Row(
-        children: [
-          // 头像
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border, width: 2),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/logo.png'), // 假设有个logo或者默认头像
-                fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () {
+        if (!isLoggedIn) {
+          context.push('/login');
+        }
+      },
+      child: Container(
+        color: AppColors.surface,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+        child: Row(
+          children: [
+            // 头像
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withOpacity(0.1),
+                border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
+              ),
+              child: Icon(
+                isLoggedIn ? Icons.person : Icons.person_outline,
+                size: 40,
+                color: AppColors.primary,
               ),
             ),
-            child: const Icon(Icons.person, size: 40, color: AppColors.textHint), // Fallback
-          ),
-          const SizedBox(width: 20),
-          // 用户信息
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isLoggedIn ? '书友_9527' : '点击登录',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+            const SizedBox(width: 20),
+            // 用户信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isLoggedIn ? '书友_9527' : '点击登录',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFE4E4), // 浅红背景
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    '普通用户',
-                    style: TextStyle(fontSize: 11, color: AppColors.primary),
-                  ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  if (isLoggedIn)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFE4E4), // 浅红背景
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        '普通用户',
+                        style: TextStyle(fontSize: 11, color: AppColors.primary),
+                      ),
+                    )
+                  else
+                    const Text(
+                      '登录后同步阅读进度',
+                      style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                    ),
+                ],
+              ),
             ),
-          ),
-          // 箭头
-          if (!isLoggedIn)
+            // 箭头
             const Icon(
               Icons.arrow_forward_ios,
               size: 16,
               color: AppColors.textHint,
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
