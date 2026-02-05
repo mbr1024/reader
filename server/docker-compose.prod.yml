@@ -1,0 +1,75 @@
+# 生产环境 Docker Compose 配置
+# 用于火山引擎服务器部署
+
+version: '3.8'
+
+services:
+  # NestJS 应用
+  app:
+    image: reader-server:latest
+    container_name: reader-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://reader:reader123@postgres:5432/reader_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - JWT_EXPIRES_IN=7d
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - reader-network
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health" ]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:16-alpine
+    container_name: reader-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: reader
+      POSTGRES_PASSWORD: reader123
+      POSTGRES_DB: reader_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - reader-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U reader -d reader_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: reader-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - reader-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  reader-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,16 @@
+# Docker 构建忽略文件
+node_modules
+npm-debug.log
+dist
+.git
+.gitignore
+.env
+.env.*
+*.md
+*.log
+.idea
+.vscode
+coverage
+test
+*.spec.ts
+*.test.ts

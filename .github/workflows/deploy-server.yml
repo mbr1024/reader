@@ -1,0 +1,115 @@
+# GitHub Actions 工作流 - 服务端自动部署
+# 触发条件: 推送到 main 分支的 server/ 目录变更
+
+name: Deploy Server
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-server.yml'
+  workflow_dispatch: # 支持手动触发
+
+env:
+  SERVER_HOST: ${{ secrets.SERVER_HOST }}
+  SERVER_USER: ${{ secrets.SERVER_USER }}
+  SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+  APP_DIR: /opt/reader-server
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: 📦 Install dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: 🔍 Run linter
+        working-directory: ./server
+        run: npm run lint || true
+
+      - name: 🏗️ Build project
+        working-directory: ./server
+        run: npm run build
+
+      - name: 📤 Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            # 创建应用目录
+            mkdir -p ${{ env.APP_DIR }}
+            
+            # 安装 Docker (如果未安装)
+            if ! command -v docker &> /dev/null; then
+              echo "Installing Docker..."
+              curl -fsSL https://get.docker.com | sh
+              systemctl enable docker
+              systemctl start docker
+            fi
+            
+            # 安装 Docker Compose (如果未安装)
+            if ! command -v docker compose &> /dev/null; then
+              echo "Installing Docker Compose..."
+              apt-get update && apt-get install -y docker-compose-plugin
+            fi
+
+      - name: 📂 Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          source: "server/"
+          target: ${{ env.APP_DIR }}
+          strip_components: 1
+
+      - name: 🚀 Run deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            cd ${{ env.APP_DIR }}
+            
+            # 构建镜像
+            echo "🏗️ Building Docker image..."
+            docker build -t reader-server:latest .
+            
+            # 启动服务
+            echo "🚀 Starting services..."
+            docker compose -f docker-compose.prod.yml down --remove-orphans || true
+            docker compose -f docker-compose.prod.yml up -d
+            
+            # 等待服务启动
+            echo "⏳ Waiting for services..."
+            sleep 15
+            
+            # 检查状态
+            echo "📊 Service status:"
+            docker compose -f docker-compose.prod.yml ps
+            
+            # 清理旧镜像
+            docker image prune -f
+
+      - name: ✅ Deployment complete
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "🌐 Server: http://${{ secrets.SERVER_HOST }}:3000"

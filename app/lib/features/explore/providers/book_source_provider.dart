@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/book_models.dart';
 import '../../../core/services/book_source_api.dart';
+import '../../../core/services/mock_book_service.dart';
 
 final bookSourceApiProvider = Provider<BookSourceApi>((ref) {
   return BookSourceApi();
@@ -45,5 +46,28 @@ final chapterContentProvider = FutureProvider.family<ChapterContent, ({String so
   (ref, params) async {
     final api = ref.watch(bookSourceApiProvider);
     return api.getChapterContent(params.sourceId, params.bookId, params.chapterId);
+  },
+);
+
+// ============ 本地 Mock 书籍 Provider ============
+
+final mockBookServiceProvider = Provider<MockBookService>((ref) {
+  return MockBookService();
+});
+
+final localBookDetailProvider = Provider<BookDetail>((ref) {
+  final service = ref.watch(mockBookServiceProvider);
+  return service.getBookDetail();
+});
+
+final localChapterListProvider = FutureProvider<List<ChapterInfo>>((ref) async {
+  final service = ref.watch(mockBookServiceProvider);
+  return service.getChapterList();
+});
+
+final localChapterContentProvider = FutureProvider.family<ChapterContent, String>(
+  (ref, chapterId) async {
+    final service = ref.watch(mockBookServiceProvider);
+    return service.getChapterContent(chapterId);
   },
 );

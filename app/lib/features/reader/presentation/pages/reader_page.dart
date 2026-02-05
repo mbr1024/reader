@@ -18,6 +18,9 @@ class ReaderPage extends ConsumerStatefulWidget {
     required this.chapterId,
   });
 
+  /// 是否为本地书籍
+  bool get isLocalBook => sourceId == 'local';
+
   @override
   ConsumerState<ReaderPage> createState() => _ReaderPageState();
 }
@@ -36,6 +39,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   late double _fontSize;
   late double _lineHeight;
   late Color _backgroundColor;
+
+  // 自动滚动
+  bool _isAutoScrolling = false;
+  double _autoScrollSpeed = 50.0; // 像素/秒，默认速度
 
   @override
   void initState() {
@@ -93,8 +100,51 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     await _storage.saveSettings(settings);
   }
 
+  /// 开始自动滚动
+  void _startAutoScroll() {
+    if (_isAutoScrolling) return;
+    setState(() => _isAutoScrolling = true);
+    _autoScrollTick();
+  }
+
+  /// 停止自动滚动
+  void _stopAutoScroll() {
+    setState(() => _isAutoScrolling = false);
+  }
+
+  /// 切换自动滚动
+  void _toggleAutoScroll() {
+    if (_isAutoScrolling) {
+      _stopAutoScroll();
+    } else {
+      _startAutoScroll();
+    }
+  }
+
+  /// 自动滚动逻辑（每帧执行）
+  void _autoScrollTick() {
+    if (!_isAutoScrolling || !mounted) return;
+    if (!_scrollController.hasClients) return;
+
+    final currentPosition = _scrollController.offset;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+
+    if (currentPosition < maxScroll) {
+      // 每 16ms（约 60fps）滚动一小段距离
+      final scrollAmount = _autoScrollSpeed / 60;
+      _scrollController.jumpTo(currentPosition + scrollAmount);
+      
+      // 继续下一帧
+      Future.delayed(const Duration(milliseconds: 16), _autoScrollTick);
+    } else {
+      // 到达底部，停止滚动
+      _stopAutoScroll();
+    }
+  }
+
   @override
   void dispose() {
+    _stopAutoScroll(); // 停止自动滚动
     _saveProgress(); // 退出时保存进度
     _scrollController.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -103,15 +153,21 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   @override
   Widget build(BuildContext context) {
-    final contentAsync = ref.watch(chapterContentProvider((
-      sourceId: widget.sourceId,
-      bookId: widget.bookId,
-      chapterId: _currentChapterId,
-    )));
-    final chaptersAsync = ref.watch(chapterListProvider((
-      sourceId: widget.sourceId,
-      bookId: widget.bookId,
-    )));
+    // 根据是否为本地书籍选择不同的 Provider
+    final contentAsync = widget.isLocalBook
+        ? ref.watch(localChapterContentProvider(_currentChapterId))
+        : ref.watch(chapterContentProvider((
+            sourceId: widget.sourceId,
+            bookId: widget.bookId,
+            chapterId: _currentChapterId,
+          )));
+    
+    final chaptersAsync = widget.isLocalBook
+        ? ref.watch(localChapterListProvider)
+        : ref.watch(chapterListProvider((
+            sourceId: widget.sourceId,
+            bookId: widget.bookId,
+          )));
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -135,11 +191,17 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                     Text('加载失败: $e'),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () => ref.invalidate(chapterContentProvider((
-                        sourceId: widget.sourceId,
-                        bookId: widget.bookId,
-                        chapterId: _currentChapterId,
-                      ))),
+                      onPressed: () {
+                        if (widget.isLocalBook) {
+                          ref.invalidate(localChapterContentProvider(_currentChapterId));
+                        } else {
+                          ref.invalidate(chapterContentProvider((
+                            sourceId: widget.sourceId,
+                            bookId: widget.bookId,
+                            chapterId: _currentChapterId,
+                          )));
+                        }
+                      },
                       child: const Text('重试'),
                     ),
                   ],
@@ -197,13 +259,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       left: 0,
       right: 0,
       child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.black54, Colors.transparent],
-          ),
-        ),
+        color: const Color(0xFF2C2C2C), // 不透明深色背景
         child: SafeArea(
           bottom: false,
           child: Row(
@@ -248,13 +304,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       left: 0,
       right: 0,
       child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [Colors.black54, Colors.transparent],
-          ),
-        ),
+        color: const Color(0xFF2C2C2C), // 不透明深色背景
         child: SafeArea(
           top: false,
           child: Padding(
@@ -262,6 +312,32 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 自动阅读速度滑块（仅在自动阅读开启时显示）
+                if (_isAutoScrolling)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.speed, color: Colors.white70, size: 20),
+                        const SizedBox(width: 8),
+                        const Text('速度', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        Expanded(
+                          child: Slider(
+                            value: _autoScrollSpeed,
+                            min: 10,
+                            max: 200,
+                            divisions: 19,
+                            activeColor: Colors.white,
+                            inactiveColor: Colors.white24,
+                            label: '${_autoScrollSpeed.toInt()}',
+                            onChanged: (value) {
+                              setState(() => _autoScrollSpeed = value);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -271,14 +347,11 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                     _buildBottomButton(Icons.list, '目录', () {
                       _showChapterList(chapters);
                     }),
-                    _buildBottomButton(Icons.nightlight_round, '夜间', () {
-                      setState(() {
-                        _backgroundColor = _backgroundColor == const Color(0xFF1C1C1E)
-                            ? const Color(0xFFF5F0E1)
-                            : const Color(0xFF1C1C1E);
-                      });
-                      _saveSettings();
-                    }),
+                    _buildBottomButton(
+                      _isAutoScrolling ? Icons.pause_circle : Icons.play_circle,
+                      _isAutoScrolling ? '停止' : '自动',
+                      _toggleAutoScroll,
+                    ),
                     _buildBottomButton(Icons.text_fields, '字体', () {
                       _showFontSettings();
                     }),
