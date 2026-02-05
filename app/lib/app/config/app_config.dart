@@ -1,29 +1,33 @@
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 
 class AppConfig {
   static const String appName = '小说阅读器';
   static const String appVersion = '1.0.0';
 
-  // API 配置 - 根据平台自动选择正确的地址
-  // 真机调试时请确保手机和电脑在同一局域网，并修改为电脑的局域网IP
-  static const String _lanIp = '10.125.247.242'; // 电脑局域网IP
-  static const bool _useRealDevice = true; // 设为 true 时真机使用局域网IP
+  // 服务器配置
+  static const String _productionServer = 'http://115.191.16.227:3000'; // 火山引擎服务器
+  static const String _lanIp = '10.125.247.242'; // 开发时电脑局域网IP
+  static const bool _useRealDevice = true; // 开发时真机使用局域网IP
 
+  /// 获取 API 基础地址
+  /// Release 模式使用生产服务器，Debug 模式使用本地开发地址
   static String get baseUrl {
+    // Release 模式直接使用生产服务器
+    if (kReleaseMode) {
+      return _productionServer;
+    }
+
+    // Debug 模式根据平台选择开发地址
     if (kIsWeb) {
-      // Web 环境使用 localhost
       return 'http://localhost:3000';
     } else if (Platform.isAndroid) {
       if (_useRealDevice) {
-        // Android 真机使用电脑的局域网 IP
         return 'http://$_lanIp:3000';
       } else {
-        // Android 模拟器使用 10.0.2.2 访问主机
         return 'http://10.0.2.2:3000';
       }
     } else {
-      // iOS/桌面平台使用 localhost
       return 'http://localhost:3000';
     }
   }
