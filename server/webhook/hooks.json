@@ -1,0 +1,18 @@
+[
+    {
+        "id": "gitee-deploy",
+        "execute-command": "/scripts/webhook-deploy.sh",
+        "command-working-directory": "/opt/reader-server",
+        "response-message": "Deployment started",
+        "trigger-rule": {
+            "match": {
+                "type": "value",
+                "value": "push",
+                "parameter": {
+                    "source": "payload",
+                    "name": "hook_name"
+                }
+            }
+        }
+    }
+]
