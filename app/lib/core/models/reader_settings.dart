@@ -1,20 +1,10 @@
 import 'package:hive/hive.dart';
 
-part 'reader_settings.g.dart';
-
 /// 阅读设置数据模型
-@HiveType(typeId: 2)
 class ReaderSettings {
-  @HiveField(0)
   final double fontSize;
-  
-  @HiveField(1)
   final double lineHeight;
-  
-  @HiveField(2)
-  final int backgroundColorValue; // 存储颜色的 int 值
-  
-  @HiveField(3)
+  final int backgroundColorValue;
   final bool keepScreenOn;
 
   ReaderSettings({
@@ -29,7 +19,7 @@ class ReaderSettings {
     return ReaderSettings(
       fontSize: 18.0,
       lineHeight: 2.0,
-      backgroundColorValue: 0xFFF5F0E1, // 护眼色
+      backgroundColorValue: 0xFFF5F0E1,
       keepScreenOn: false,
     );
   }
@@ -47,4 +37,43 @@ class ReaderSettings {
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
     );
   }
+}
+
+class ReaderSettingsAdapter extends TypeAdapter<ReaderSettings> {
+  @override
+  final int typeId = 2;
+
+  @override
+  ReaderSettings read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return ReaderSettings(
+      fontSize: fields[0] as double? ?? 18.0,
+      lineHeight: fields[1] as double? ?? 2.0,
+      backgroundColorValue: fields[2] as int? ?? 0xFFF5F0E1,
+      keepScreenOn: fields[3] as bool? ?? false,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, ReaderSettings obj) {
+    writer
+      ..writeByte(4)
+      ..writeByte(0)..write(obj.fontSize)
+      ..writeByte(1)..write(obj.lineHeight)
+      ..writeByte(2)..write(obj.backgroundColorValue)
+      ..writeByte(3)..write(obj.keepScreenOn);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ReaderSettingsAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

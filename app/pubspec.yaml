@@ -38,6 +38,8 @@ dependencies:
 
   # 连接状态
   connectivity_plus: ^6.1.4
+  file_picker: ^10.3.10
+  epubx: ^4.0.0
 
 dev_dependencies:
   flutter_test:

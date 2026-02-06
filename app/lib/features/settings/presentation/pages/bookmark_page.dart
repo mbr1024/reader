@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
+import '../../../../shared/utils/toast.dart';
 
 /// 书签管理页面
 class BookmarkPage extends StatefulWidget {
@@ -103,13 +104,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                   _bookmarks[index]['note'] = controller.text;
                 }
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('备注已更新'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              );
+              Toast.show(context, '备注已更新');
             },
             child: const Text('保存'),
           ),
@@ -274,24 +269,12 @@ class _BookmarkPageState extends State<BookmarkPage> {
         setState(() {
           _bookmarks.removeWhere((b) => b['id'] == bookmark['id']);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('书签已删除'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        Toast.show(context, '书签已删除');
       },
       child: InkWell(
         onTap: () {
           // 跳转到阅读页面对应位置
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('跳转到: ${bookmark['chapterTitle']}'),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          );
+          Toast.show(context, '跳转到: ${bookmark['chapterTitle']}');
         },
         onLongPress: () => _editNote(bookmark),
         child: Container(

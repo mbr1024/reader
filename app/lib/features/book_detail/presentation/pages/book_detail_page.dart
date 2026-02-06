@@ -6,6 +6,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../explore/providers/book_source_provider.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/models/bookshelf_item.dart';
+import '../../../../shared/utils/toast.dart';
 
 class BookDetailPage extends ConsumerStatefulWidget {
   final String sourceId;
@@ -350,9 +351,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     await _storage.addToBookshelf(item);
     setState(() => _isInBookshelf = true);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已加入书架')),
-      );
+      Toast.show(context, '已加入书架');
     }
   }
 
@@ -360,9 +359,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     await _storage.removeFromBookshelf(widget.bookId);
     setState(() => _isInBookshelf = false);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已从书架移除')),
-      );
+      Toast.show(context, '已从书架移除');
     }
   }
 }

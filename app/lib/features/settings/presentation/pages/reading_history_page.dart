@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../shared/utils/toast.dart';
 
 /// 阅读历史页面
 class ReadingHistoryPage extends StatefulWidget {
@@ -87,13 +88,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage> {
               setState(() {
                 _histories.removeAt(index);
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('已删除'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              );
+              Toast.show(context, '已删除');
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('删除'),
@@ -123,13 +118,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage> {
               setState(() {
                 _histories.clear();
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('已清空所有阅读历史'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              );
+              Toast.show(context, '已清空所有阅读历史');
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('清空'),
@@ -220,13 +209,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage> {
         setState(() {
           _histories.removeAt(index);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('已删除'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        Toast.show(context, '已删除');
       },
       child: InkWell(
         onTap: () {

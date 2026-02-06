@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../shared/utils/toast.dart';
 
 /// "我的"页面 - 简洁现代风格
 class MyPage extends StatefulWidget {
@@ -296,14 +297,7 @@ class _MyPageState extends State<MyPage> {
               if (mounted) {
                 Navigator.pop(dialogContext);
                 setState(() => _refreshState());
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('已退出登录'),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: const Color(0xFF333333),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                );
+                Toast.show(context, '已退出登录');
               }
             },
             child: const Text('确定',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../shared/utils/toast.dart';
 
 /// 云端同步页面
 class SyncPage extends StatefulWidget {
@@ -37,19 +38,7 @@ class _SyncPageState extends State<SyncPage> {
 
   Future<void> _performSync() async {
     if (!StorageService.instance.isLoggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('请先登录后使用云端同步'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          action: SnackBarAction(
-            label: '去登录',
-            onPressed: () {
-              // 跳转登录页面
-            },
-          ),
-        ),
-      );
+      Toast.show(context, '请先登录后使用云端同步');
       return;
     }
 
@@ -66,13 +55,7 @@ class _SyncPageState extends State<SyncPage> {
     });
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('同步完成'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+      Toast.show(context, '同步完成');
     }
   }
 

@@ -17,6 +17,9 @@ class StorageService {
   late Box<BookshelfItem> _bookshelfBox;
   late Box<ReadingProgress> _progressBox;
   late Box<ReaderSettings> _settingsBox;
+  late Box<String> _localBooksBox; // bookId -> filePath
+  late Box<String> _localChaptersIndexBox; // bookId -> JSON章节标题列表
+  late Box<String> _localChaptersContentBox; // bookId_idx -> 章节内容
   
   bool _initialized = false;
   
@@ -40,6 +43,9 @@ class StorageService {
     _bookshelfBox = await Hive.openBox<BookshelfItem>(StorageKeys.bookshelfBox);
     _progressBox = await Hive.openBox<ReadingProgress>(StorageKeys.progressBox);
     _settingsBox = await Hive.openBox<ReaderSettings>(StorageKeys.settingsBox);
+    _localBooksBox = await Hive.openBox<String>(StorageKeys.localBooksBox);
+    _localChaptersIndexBox = await Hive.openBox<String>(StorageKeys.localChaptersIndexBox);
+    _localChaptersContentBox = await Hive.openBox<String>(StorageKeys.localChaptersContentBox);
     
     _initialized = true;
 
@@ -109,6 +115,30 @@ class StorageService {
     await _bookshelfBox.put(item.bookId, item);
   }
   
+  // ============ 本地书籍文件路径 ============
+  
+  /// 保存本地书籍的文件路径
+  Future<void> saveLocalBookPath(String bookId, String filePath) async {
+    await _localBooksBox.put(bookId, filePath);
+  }
+  
+  /// 获取本地书籍的文件路径
+  String? getLocalBookPath(String bookId) {
+    return _localBooksBox.get(bookId);
+  }
+  
+  /// 删除本地书籍的文件路径
+  Future<void> removeLocalBookPath(String bookId) async {
+    await _localBooksBox.delete(bookId);
+  }
+  
+  /// 获取所有本地书籍路径映射
+  Map<String, String> getAllLocalBookPaths() {
+    return Map.fromEntries(
+      _localBooksBox.keys.map((key) => MapEntry(key.toString(), _localBooksBox.get(key)!)),
+    );
+  }
+
   // ============ 阅读进度相关 ============
   
   ReadingProgress? getProgress(String bookId) {
@@ -133,5 +163,40 @@ class StorageService {
   
   Future<void> saveSettings(ReaderSettings settings) async {
     await _settingsBox.put(_settingsKey, settings);
+  }
+
+  // ============ 本地书籍章节存储 ============
+
+  /// 保存章节索引（标题列表的 JSON）
+  Future<void> saveChapterIndex(String bookId, String jsonStr) async {
+    await _localChaptersIndexBox.put(bookId, jsonStr);
+  }
+
+  /// 读取章节索引
+  String? getChapterIndex(String bookId) {
+    return _localChaptersIndexBox.get(bookId);
+  }
+
+  /// 保存单章内容
+  Future<void> saveChapterContent(String bookId, int index, String content) async {
+    await _localChaptersContentBox.put('${bookId}_$index', content);
+  }
+
+  /// 读取单章内容（同步，极快）
+  String? getChapterContent(String bookId, int index) {
+    return _localChaptersContentBox.get('${bookId}_$index');
+  }
+
+  /// 删除某本书的全部章节数据
+  Future<void> removeLocalBookData(String bookId) async {
+    await _localChaptersIndexBox.delete(bookId);
+    // 删除所有章节内容
+    final keysToDelete = _localChaptersContentBox.keys
+        .where((key) => key.toString().startsWith('${bookId}_'))
+        .toList();
+    for (final key in keysToDelete) {
+      await _localChaptersContentBox.delete(key);
+    }
+    await _localBooksBox.delete(bookId);
   }
 }

@@ -1,41 +1,17 @@
 import 'package:hive/hive.dart';
 
-part 'bookshelf_item.g.dart';
-
 /// 书架项数据模型
-@HiveType(typeId: 0)
 class BookshelfItem {
-  @HiveField(0)
   final String bookId;
-  
-  @HiveField(1)
   final String sourceId;
-  
-  @HiveField(2)
   final String title;
-  
-  @HiveField(3)
   final String author;
-  
-  @HiveField(4)
   final String? cover;
-  
-  @HiveField(5)
   final String? category;
-  
-  @HiveField(6)
   final String? lastChapterId;
-  
-  @HiveField(7)
   final String? lastChapterTitle;
-  
-  @HiveField(8)
   final DateTime addedAt;
-  
-  @HiveField(9)
   final DateTime? lastReadAt;
-  
-  @HiveField(10)
   final bool isTop;
 
   BookshelfItem({
@@ -73,4 +49,57 @@ class BookshelfItem {
       isTop: isTop ?? this.isTop,
     );
   }
+}
+
+class BookshelfItemAdapter extends TypeAdapter<BookshelfItem> {
+  @override
+  final int typeId = 0;
+
+  @override
+  BookshelfItem read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return BookshelfItem(
+      bookId: fields[0] as String,
+      sourceId: fields[1] as String,
+      title: fields[2] as String,
+      author: fields[3] as String,
+      cover: fields[4] as String?,
+      category: fields[5] as String?,
+      lastChapterId: fields[6] as String?,
+      lastChapterTitle: fields[7] as String?,
+      addedAt: fields[8] as DateTime,
+      lastReadAt: fields[9] as DateTime?,
+      isTop: fields[10] as bool? ?? false,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, BookshelfItem obj) {
+    writer
+      ..writeByte(11)
+      ..writeByte(0)..write(obj.bookId)
+      ..writeByte(1)..write(obj.sourceId)
+      ..writeByte(2)..write(obj.title)
+      ..writeByte(3)..write(obj.author)
+      ..writeByte(4)..write(obj.cover)
+      ..writeByte(5)..write(obj.category)
+      ..writeByte(6)..write(obj.lastChapterId)
+      ..writeByte(7)..write(obj.lastChapterTitle)
+      ..writeByte(8)..write(obj.addedAt)
+      ..writeByte(9)..write(obj.lastReadAt)
+      ..writeByte(10)..write(obj.isTop);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BookshelfItemAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

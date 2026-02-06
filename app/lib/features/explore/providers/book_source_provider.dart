@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/book_models.dart';
 import '../../../core/services/book_source_api.dart';
 import '../../../core/services/mock_book_service.dart';
+import '../../../core/services/local_book_service.dart';
 
 final bookSourceApiProvider = Provider<BookSourceApi>((ref) {
   return BookSourceApi();
@@ -30,10 +31,10 @@ final searchResultsProvider = FutureProvider<List<BookSearchResult>>((ref) async
 
 final bookDetailProvider = FutureProvider.family<BookDetail, ({String sourceId, String bookId})>(
   (ref, params) async {
-    // 本地调试书籍
     if (params.sourceId == 'local') {
-      final service = ref.watch(mockBookServiceProvider);
-      return service.getBookDetail();
+      // 先尝试本地导入书籍
+      final localService = LocalBookService.instance;
+      return localService.getBookDetail(params.bookId);
     }
     final api = ref.watch(bookSourceApiProvider);
     return api.getBookDetail(params.sourceId, params.bookId);
@@ -42,10 +43,9 @@ final bookDetailProvider = FutureProvider.family<BookDetail, ({String sourceId, 
 
 final chapterListProvider = FutureProvider.family<List<ChapterInfo>, ({String sourceId, String bookId})>(
   (ref, params) async {
-    // 本地调试书籍
     if (params.sourceId == 'local') {
-      final service = ref.watch(mockBookServiceProvider);
-      return service.getChapterList();
+      final localService = LocalBookService.instance;
+      return localService.getChapterList(params.bookId);
     }
     final api = ref.watch(bookSourceApiProvider);
     return api.getChapterList(params.sourceId, params.bookId);
@@ -54,12 +54,16 @@ final chapterListProvider = FutureProvider.family<List<ChapterInfo>, ({String so
 
 final chapterContentProvider = FutureProvider.family<ChapterContent, ({String sourceId, String bookId, String chapterId})>(
   (ref, params) async {
+    if (params.sourceId == 'local') {
+      final localService = LocalBookService.instance;
+      return localService.getChapterContent(params.bookId, params.chapterId);
+    }
     final api = ref.watch(bookSourceApiProvider);
     return api.getChapterContent(params.sourceId, params.bookId, params.chapterId);
   },
 );
 
-// ============ 本地 Mock 书籍 Provider ============
+// ============ 本地 Mock 书籍 Provider（保留兼容） ============
 
 final mockBookServiceProvider = Provider<MockBookService>((ref) {
   return MockBookService();

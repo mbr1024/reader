@@ -6,6 +6,9 @@ class StorageKeys {
   static const String progressBox = 'progress_box';
   static const String settingsBox = 'settings_box';
   static const String cacheBox = 'cache_box';
+  static const String localBooksBox = 'local_books_box'; // bookId -> filePath
+  static const String localChaptersIndexBox = 'local_ch_index'; // bookId -> JSON章节列表
+  static const String localChaptersContentBox = 'local_ch_content'; // bookId_idx -> 内容
   
   // Auth Keys
   static const String accessToken = 'access_token';

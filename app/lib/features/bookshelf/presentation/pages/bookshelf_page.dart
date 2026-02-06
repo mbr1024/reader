@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/local_book_service.dart';
 import '../../../../core/models/bookshelf_item.dart';
 import '../../../../core/data/mock_data.dart';
+import '../../../../shared/utils/toast.dart';
 
 /// 书架页 - 简洁现代风格
 class BookshelfPage extends StatefulWidget {
@@ -18,18 +21,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   List<BookshelfItem> _books = [];
   String _sortBy = 'recent'; // recent, added, title, author
   bool _isGridView = true;
-
-  // 本地调试书籍 - 三体
-  static final _localTestBook = BookshelfItem(
-    bookId: 'santi',
-    sourceId: 'local',
-    title: '三体',
-    author: '刘慈欣',
-    cover: 'assets/images/covers/image.png',
-    category: '科幻',
-    addedAt: DateTime.now(),
-    lastChapterTitle: '本地调试',
-  );
+  bool _isImporting = false;
 
   @override
   void initState() {
@@ -92,8 +84,82 @@ class _BookshelfPageState extends State<BookshelfPage> {
     }
   }
 
-  // 获取包含本地测试书籍的完整列表
-  List<BookshelfItem> get _allBooks => [_localTestBook, ..._books];
+  // ============ 导入本地书籍 ============
+
+  Future<void> _importLocalBook() async {
+    if (_isImporting) return;
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['txt', 'epub'],
+        allowMultiple: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      setState(() => _isImporting = true);
+
+      int successCount = 0;
+      int failCount = 0;
+      String lastTitle = '';
+
+      for (final file in result.files) {
+        if (file.path == null) continue;
+
+        try {
+          final importResult = await LocalBookService.instance.importBook(file.path!);
+
+          // 检查是否已在书架
+          if (_storage.isInBookshelf(importResult.bookId)) {
+            // 已存在，跳过但不算失败
+            lastTitle = importResult.title;
+            successCount++;
+            continue;
+          }
+
+          // 添加到书架
+          await _storage.addToBookshelf(BookshelfItem(
+            bookId: importResult.bookId,
+            sourceId: 'local',
+            title: importResult.title,
+            author: importResult.author,
+            category: '本地',
+            addedAt: DateTime.now(),
+            lastChapterTitle: '${importResult.chapterCount}章 · ${importResult.format.toUpperCase()}',
+          ));
+
+          lastTitle = importResult.title;
+          successCount++;
+        } catch (e) {
+          failCount++;
+          debugPrint('导入失败: ${file.name} - $e');
+        }
+      }
+
+      if (mounted) {
+        _loadBookshelf();
+        setState(() => _isImporting = false);
+
+        // 显示结果
+        String message;
+        if (successCount == 1 && failCount == 0) {
+          message = '已导入《$lastTitle》';
+        } else if (failCount == 0) {
+          message = '成功导入 $successCount 本书';
+        } else {
+          message = '导入 $successCount 本，失败 $failCount 本';
+        }
+
+        Toast.show(context, message);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isImporting = false);
+        Toast.error(context, '导入失败: $e');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +196,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
           
-          // 书籍网格（包含本地测试书籍）
+          // 书籍网格
           if (_isGridView)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -142,16 +208,16 @@ class _BookshelfPageState extends State<BookshelfPage> {
                   mainAxisSpacing: 24,
                 ),
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildBookItem(_allBooks[index]),
-                  childCount: _allBooks.length,
+                  (context, index) => _buildBookItem(_books[index]),
+                  childCount: _books.length,
                 ),
               ),
             )
           else
             SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildBookListItem(_allBooks[index]),
-                childCount: _allBooks.length,
+                (context, index) => _buildBookListItem(_books[index]),
+                childCount: _books.length,
               ),
             ),
           
@@ -184,49 +250,54 @@ class _BookshelfPageState extends State<BookshelfPage> {
                 ),
               ),
               const SizedBox(height: 24),
-              GestureDetector(
-                onTap: () => context.go('/explore'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Text(
-                    '去书城逛逛',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 48),
-              // 本地测试入口
-              GestureDetector(
-                onTap: () => context.push('/reader/local/santi/0'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFE0E0E0)),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.bug_report_outlined, size: 16, color: Color(0xFF999999)),
-                      SizedBox(width: 6),
-                      Text(
-                        '本地测试',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () => context.go('/explore'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A1A),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Text(
+                        '去书城逛逛',
                         style: TextStyle(
-                          color: Color(0xFF999999),
-                          fontSize: 13,
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: _importLocalBook,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.file_upload_outlined, size: 16, color: Color(0xFF666666)),
+                          SizedBox(width: 6),
+                          Text(
+                            '导入本地',
+                            style: TextStyle(
+                              color: Color(0xFF666666),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -249,6 +320,18 @@ class _BookshelfPageState extends State<BookshelfPage> {
             ),
           ),
           const Spacer(),
+          // 导入按钮
+          GestureDetector(
+            onTap: _isImporting ? null : _importLocalBook,
+            child: _isImporting
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1A1A1A)),
+                  )
+                : const Icon(Icons.file_upload_outlined, size: 24, color: Color(0xFF1A1A1A)),
+          ),
+          const SizedBox(width: 20),
           GestureDetector(
             onTap: () => _showSearchSheet(),
             child: const Icon(Icons.search, size: 24, color: Color(0xFF1A1A1A)),
@@ -265,10 +348,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
 
   Widget _buildRecentReading() {
     final recent = _books.first;
+    final lastChapterId = recent.lastChapterId ?? '0';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: GestureDetector(
-        onTap: () => context.push('/book/${recent.sourceId}/${recent.bookId}'),
+        onTap: () => context.push('/reader/${recent.sourceId}/${recent.bookId}/$lastChapterId'),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -362,7 +446,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           ),
           const SizedBox(width: 6),
           Text(
-            '${_allBooks.length}',
+            '${_books.length}',
             style: const TextStyle(fontSize: 14, color: Color(0xFF999999)),
           ),
           const Spacer(),
@@ -376,14 +460,12 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   Widget _buildBookItem(BookshelfItem book) {
-    final isLocalTest = book.sourceId == 'local';
-    // 获取上次阅读的章节，默认从第0章开始
+    final isLocal = book.sourceId == 'local';
     final lastChapterId = book.lastChapterId ?? '0';
     
     return GestureDetector(
       onLongPress: () => _showBookOptions(book),
       onTap: () {
-        // 书架书籍直接进入阅读器
         context.push('/reader/${book.sourceId}/${book.bookId}/$lastChapterId');
       },
       child: Column(
@@ -409,22 +491,22 @@ class _BookshelfPageState extends State<BookshelfPage> {
                     child: _buildCover(book.cover, book.title, double.infinity, double.infinity),
                   ),
                 ),
-                // 本地测试角标
-                if (isLocalTest)
+                // 本地角标
+                if (isLocal)
                   Positioned(
                     top: 0,
                     right: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: const BoxDecoration(
-                        color: Color(0xFF1A1A1A),
+                        color: Color(0xFF5C6BC0),
                         borderRadius: BorderRadius.only(
                           topRight: Radius.circular(8),
                           bottomLeft: Radius.circular(6),
                         ),
                       ),
                       child: const Text(
-                        '测试',
+                        '本地',
                         style: TextStyle(
                           fontSize: 9,
                           color: Colors.white,
@@ -449,7 +531,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           ),
           const SizedBox(height: 2),
           Text(
-            isLocalTest ? '本地调试' : (book.lastChapterTitle ?? '未开始'),
+            book.lastChapterTitle ?? '未开始',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 11, color: Color(0xFF999999)),
@@ -460,13 +542,12 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   Widget _buildBookListItem(BookshelfItem book) {
-    final isLocalTest = book.sourceId == 'local';
+    final isLocal = book.sourceId == 'local';
     final lastChapterId = book.lastChapterId ?? '0';
     
     return GestureDetector(
       onLongPress: () => _showBookOptions(book),
       onTap: () {
-        // 书架书籍直接进入阅读器
         context.push('/reader/${book.sourceId}/${book.bookId}/$lastChapterId');
       },
       child: Container(
@@ -511,16 +592,16 @@ class _BookshelfPageState extends State<BookshelfPage> {
                           ),
                         ),
                       ),
-                      if (isLocalTest)
+                      if (isLocal)
                         Container(
                           margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1A1A1A),
+                            color: const Color(0xFF5C6BC0),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            '测试',
+                            '本地',
                             style: TextStyle(
                               fontSize: 9,
                               color: Colors.white,
@@ -537,7 +618,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    isLocalTest ? '本地调试模式' : (book.lastChapterTitle ?? '未开始'),
+                    book.lastChapterTitle ?? '未开始',
                     style: const TextStyle(fontSize: 11, color: Color(0xFFBBBBBB)),
                   ),
                 ],
@@ -645,20 +726,17 @@ class _BookshelfPageState extends State<BookshelfPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                if (_allBooks.isNotEmpty) ...[
+                if (_books.isNotEmpty) ...[
                   const Text(
                     '书架书籍',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF666666)),
                   ),
                   const SizedBox(height: 12),
-                  ...(_allBooks.take(6).map((book) => GestureDetector(
+                  ...(_books.take(6).map((book) => GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
-                      if (book.sourceId == 'local') {
-                        context.push('/reader/local/santi/0');
-                      } else {
-                        context.push('/book/${book.sourceId}/${book.bookId}');
-                      }
+                      final lastChapterId = book.lastChapterId ?? '0';
+                      context.push('/reader/${book.sourceId}/${book.bookId}/$lastChapterId');
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -700,11 +778,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
                                         margin: const EdgeInsets.only(left: 6),
                                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF1A1A1A),
+                                          color: const Color(0xFF5C6BC0),
                                           borderRadius: BorderRadius.circular(2),
                                         ),
                                         child: const Text(
-                                          '测试',
+                                          '本地',
                                           style: TextStyle(fontSize: 8, color: Colors.white),
                                         ),
                                       ),
@@ -753,6 +831,15 @@ class _BookshelfPageState extends State<BookshelfPage> {
               ),
             ),
             _buildMoreOptionItem(
+              icon: Icons.file_upload_outlined,
+              title: '导入本地书籍',
+              subtitle: 'TXT / EPUB',
+              onTap: () {
+                Navigator.pop(context);
+                _importLocalBook();
+              },
+            ),
+            _buildMoreOptionItem(
               icon: Icons.sort,
               title: '排序方式',
               subtitle: _getSortLabel(),
@@ -771,8 +858,8 @@ class _BookshelfPageState extends State<BookshelfPage> {
               },
             ),
             _buildMoreOptionItem(
-              icon: Icons.add,
-              title: '添加书籍',
+              icon: Icons.explore_outlined,
+              title: '书城',
               onTap: () {
                 Navigator.pop(context);
                 context.push('/explore');
@@ -904,6 +991,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   Future<void> _showBookOptions(BookshelfItem book) async {
+    final isLocal = book.sourceId == 'local';
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -942,9 +1030,25 @@ class _BookshelfPageState extends State<BookshelfPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          book.title,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                book.title,
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)),
+                              ),
+                            ),
+                            if (isLocal)
+                              Container(
+                                margin: const EdgeInsets.only(left: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF5C6BC0),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text('本地', style: TextStyle(fontSize: 9, color: Colors.white)),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(book.author ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF999999))),
@@ -983,6 +1087,10 @@ class _BookshelfPageState extends State<BookshelfPage> {
               isDestructive: true,
               onTap: () async {
                 await _storage.removeFromBookshelf(book.bookId);
+                // 如果是本地书籍，同时清理所有章节数据
+                if (isLocal) {
+                  await LocalBookService.instance.clearBook(book.bookId);
+                }
                 _loadBookshelf();
                 if (context.mounted) Navigator.pop(context);
               },

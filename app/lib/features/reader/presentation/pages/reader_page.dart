@@ -6,6 +6,7 @@ import '../../../../core/services/storage_service.dart';
 import '../../../../core/models/reading_progress.dart';
 import '../../../../core/models/reader_settings.dart';
 import '../../../../core/models/book_models.dart';
+import '../../../../shared/utils/toast.dart';
 
 class ReaderPage extends ConsumerStatefulWidget {
   final String sourceId;
@@ -150,10 +151,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   void _jumpToChapter(int index) {
     if (index < 0 || index >= _chapters.length) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(index < 0 ? '已是第一章' : '已是最后一章'),
-        duration: const Duration(seconds: 1),
-      ));
+      Toast.show(context, index < 0 ? '已是第一章' : '已是最后一章');
       return;
     }
     _saveProgress();
@@ -224,10 +222,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   @override
   Widget build(BuildContext context) {
-    final chaptersAsync = widget.isLocalBook
-        ? ref.watch(localChapterListProvider)
-        : ref.watch(chapterListProvider((
-            sourceId: widget.sourceId, bookId: widget.bookId)));
+    final chaptersAsync = ref.watch(chapterListProvider((
+        sourceId: widget.sourceId, bookId: widget.bookId)));
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -308,12 +304,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                if (widget.isLocalBook) {
-                  ref.invalidate(localChapterListProvider);
-                } else {
-                  ref.invalidate(chapterListProvider((
+                ref.invalidate(chapterListProvider((
                     sourceId: widget.sourceId, bookId: widget.bookId)));
-                }
               },
               child: const Text('重试'),
             ),
@@ -330,7 +322,6 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       chapter: _chapters[chapterIdx],
       sourceId: widget.sourceId,
       bookId: widget.bookId,
-      isLocal: widget.isLocalBook,
       fontSize: _fontSize,
       lineHeight: _lineHeight,
       textColor: textColor,
@@ -357,8 +348,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
               style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
               maxLines: 1, overflow: TextOverflow.ellipsis)),
             IconButton(icon: const Icon(Icons.bookmark_border, color: Colors.white),
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('已添加书签')))),
+              onPressed: () => Toast.show(context, '已添加书签')),
           ])),
         ),
       ),
@@ -524,23 +514,20 @@ class _ChapterWidget extends ConsumerWidget {
   final ChapterInfo chapter;
   final String sourceId;
   final String bookId;
-  final bool isLocal;
   final double fontSize;
   final double lineHeight;
   final Color textColor;
 
   const _ChapterWidget({
     super.key, required this.chapter, required this.sourceId,
-    required this.bookId, required this.isLocal, required this.fontSize,
+    required this.bookId, required this.fontSize,
     required this.lineHeight, required this.textColor,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final contentAsync = isLocal
-        ? ref.watch(localChapterContentProvider(chapter.id))
-        : ref.watch(chapterContentProvider((
-            sourceId: sourceId, bookId: bookId, chapterId: chapter.id)));
+    final contentAsync = ref.watch(chapterContentProvider((
+        sourceId: sourceId, bookId: bookId, chapterId: chapter.id)));
 
     return contentAsync.when(
       data: (content) => Padding(
@@ -569,12 +556,8 @@ class _ChapterWidget extends ConsumerWidget {
             const SizedBox(height: 8),
             TextButton(
               onPressed: () {
-                if (isLocal) {
-                  ref.invalidate(localChapterContentProvider(chapter.id));
-                } else {
-                  ref.invalidate(chapterContentProvider((
+                ref.invalidate(chapterContentProvider((
                     sourceId: sourceId, bookId: bookId, chapterId: chapter.id)));
-                }
               },
               child: const Text('重试'),
             ),

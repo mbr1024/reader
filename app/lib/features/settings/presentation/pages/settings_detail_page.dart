@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/models/reader_settings.dart';
+import '../../../../shared/utils/toast.dart';
 
 /// 设置页面 - 二级页面
 class SettingsDetailPage extends StatefulWidget {
@@ -340,8 +341,7 @@ class _SettingsDetailPageState extends State<SettingsDetailPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('缓存已清除')));
+              Toast.show(context, '缓存已清除');
             },
             child: const Text('确定', style: TextStyle(
               color: AppColors.primary, fontWeight: FontWeight.w600)),
@@ -388,12 +388,7 @@ class _SettingsDetailPageState extends State<SettingsDetailPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: const Text('感谢您的反馈！'),
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: const Color(0xFF333333),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ));
+              Toast.show(context, '感谢您的反馈！');
             },
             child: const Text('提交', style: TextStyle(
               color: AppColors.primary, fontWeight: FontWeight.w600)),

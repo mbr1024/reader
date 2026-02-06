@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/auth_service.dart';
+import '../../../../shared/utils/toast.dart';
 
 /// 简洁现代的登录页 - 参考 Linear / Notion / 微信读书风格
 class LoginPage extends StatefulWidget {
@@ -398,14 +399,7 @@ class _LoginPageState extends State<LoginPage> {
   }) {
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$label登录暂未开放'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF333333),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        Toast.show(context, '$label登录暂未开放');
       },
       child: Container(
         width: 140,
@@ -511,26 +505,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFFE53935),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    Toast.error(context, message);
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF43A047),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    Toast.success(context, message);
   }
 }
