@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 
 class AppConfig {
-  static const String appName = '小说阅读器';
+  static const String appName = '绯页';
   static const String appVersion = '1.0.0';
 
   // 服务器配置 - 通过 --dart-define 注入
