@@ -6,10 +6,14 @@ import '../../features/bookshelf/presentation/pages/bookshelf_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/settings/presentation/pages/my_page.dart';
 import '../../features/settings/presentation/pages/settings_detail_page.dart';
-import '../../features/reader/presentation/pages/reader_page.dart';
+import '../../features/settings/presentation/pages/reading_history_page.dart';
+import '../../features/settings/presentation/pages/bookmark_page.dart';
+import '../../features/settings/presentation/pages/download_page.dart';
+import '../../features/settings/presentation/pages/sync_page.dart';
 import '../../features/reader/presentation/pages/reader_page.dart';
 import '../../features/book_detail/presentation/pages/book_detail_page.dart';
 import '../../features/rank/presentation/pages/rank_page.dart';
+import '../../features/explore/presentation/pages/category_page.dart';
 import '../../shared/widgets/main_scaffold.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -62,10 +66,58 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const SettingsDetailPage(),
     ),
 
+    // 阅读历史页面
+    GoRoute(
+      path: '/reading-history',
+      builder: (context, state) => const ReadingHistoryPage(),
+    ),
+
+    // 书签管理页面
+    GoRoute(
+      path: '/bookmarks',
+      builder: (context, state) => const BookmarkPage(),
+    ),
+
+    // 离线下载页面
+    GoRoute(
+      path: '/downloads',
+      builder: (context, state) => const DownloadPage(),
+    ),
+
+    // 云端同步页面
+    GoRoute(
+      path: '/sync',
+      builder: (context, state) => const SyncPage(),
+    ),
+
     // 排行榜页面
     GoRoute(
       path: '/rank',
       builder: (context, state) => const RankPage(),
+    ),
+
+    // 分类页面 - 男频
+    GoRoute(
+      path: '/explore/category/1',
+      builder: (context, state) => const CategoryPage(type: CategoryType.male),
+    ),
+
+    // 分类页面 - 女频
+    GoRoute(
+      path: '/explore/category/2',
+      builder: (context, state) => const CategoryPage(type: CategoryType.female),
+    ),
+
+    // 分类页面 - 完本
+    GoRoute(
+      path: '/explore/category/3',
+      builder: (context, state) => const CategoryPage(type: CategoryType.finished),
+    ),
+
+    // 分类页面 - 全部分类
+    GoRoute(
+      path: '/explore/category/4',
+      builder: (context, state) => const CategoryPage(type: CategoryType.all),
     ),
 
     // 主页面 (带底部导航)

@@ -44,11 +44,18 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   bool _isAutoScrolling = false;
   double _autoScrollSpeed = 50.0; // 像素/秒，默认速度
 
+  // 边界滚动切换章节
+  double _overscrollAccumulator = 0;
+  static const double _overscrollThreshold = 100; // 需要过度滚动的距离
+  bool _isNavigating = false; // 防止重复切换
+  List _cachedChapters = []; // 缓存章节列表
+
   @override
   void initState() {
     super.initState();
     _loadSettings();
     _loadProgress();
+    _scrollController.addListener(_onScroll);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
@@ -100,6 +107,106 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     await _storage.saveSettings(settings);
   }
 
+  /// 滚动监听 - 边界滚动切换章节
+  void _onScroll() {
+    if (!_scrollController.hasClients || _isNavigating || _cachedChapters.isEmpty) return;
+    
+    final position = _scrollController.position;
+    
+    // 检测过度滚动
+    if (position.pixels <= position.minScrollExtent) {
+      // 到达顶部，继续向上滚动
+      final overscroll = position.minScrollExtent - position.pixels;
+      if (overscroll > 0) {
+        _overscrollAccumulator = overscroll;
+      }
+    } else if (position.pixels >= position.maxScrollExtent) {
+      // 到达底部，继续向下滚动
+      final overscroll = position.pixels - position.maxScrollExtent;
+      if (overscroll > 0) {
+        _overscrollAccumulator = overscroll;
+      }
+    } else {
+      _overscrollAccumulator = 0;
+    }
+  }
+
+  /// 处理过度滚动通知
+  bool _handleOverscroll(OverscrollNotification notification) {
+    if (_isNavigating || _cachedChapters.isEmpty) return false;
+    
+    final overscroll = notification.overscroll;
+    _overscrollAccumulator += overscroll.abs();
+    
+    if (_overscrollAccumulator >= _overscrollThreshold) {
+      _overscrollAccumulator = 0;
+      
+      if (overscroll > 0) {
+        // 向下过度滚动 -> 下一章
+        _navigateToNextChapter();
+      } else if (overscroll < 0) {
+        // 向上过度滚动 -> 上一章
+        _navigateToPrevChapter();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /// 切换到下一章
+  void _navigateToNextChapter() {
+    if (_cachedChapters.isEmpty) return;
+    
+    final currentIndex = _cachedChapters.indexWhere((c) => c.id == _currentChapterId);
+    if (currentIndex < _cachedChapters.length - 1) {
+      _isNavigating = true;
+      _saveProgress();
+      setState(() {
+        _currentChapterId = _cachedChapters[currentIndex + 1].id;
+        _currentChapterIndex = currentIndex + 1;
+        _currentChapterTitle = _cachedChapters[currentIndex + 1].title;
+      });
+      // 滚动到顶部
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+        _isNavigating = false;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已是最后一章'), duration: Duration(seconds: 1)),
+      );
+    }
+  }
+
+  /// 切换到上一章
+  void _navigateToPrevChapter() {
+    if (_cachedChapters.isEmpty) return;
+    
+    final currentIndex = _cachedChapters.indexWhere((c) => c.id == _currentChapterId);
+    if (currentIndex > 0) {
+      _isNavigating = true;
+      _saveProgress();
+      setState(() {
+        _currentChapterId = _cachedChapters[currentIndex - 1].id;
+        _currentChapterIndex = currentIndex - 1;
+        _currentChapterTitle = _cachedChapters[currentIndex - 1].title;
+      });
+      // 滚动到底部（上一章结尾）
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
+        _isNavigating = false;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已是第一章'), duration: Duration(seconds: 1)),
+      );
+    }
+  }
+
   /// 开始自动滚动
   void _startAutoScroll() {
     if (_isAutoScrolling) return;
@@ -109,7 +216,11 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   /// 停止自动滚动
   void _stopAutoScroll() {
-    setState(() => _isAutoScrolling = false);
+    if (mounted) {
+      setState(() => _isAutoScrolling = false);
+    } else {
+      _isAutoScrolling = false;
+    }
   }
 
   /// 切换自动滚动
@@ -144,7 +255,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   @override
   void dispose() {
-    _stopAutoScroll(); // 停止自动滚动
+    // 直接停止自动滚动，不调用 setState
+    _isAutoScrolling = false;
+    _scrollController.removeListener(_onScroll);
     _saveProgress(); // 退出时保存进度
     _scrollController.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -168,19 +281,30 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             sourceId: widget.sourceId,
             bookId: widget.bookId,
           )));
+    
+    // 缓存章节列表
+    if (chaptersAsync.hasValue) {
+      _cachedChapters = chaptersAsync.value!;
+    }
 
     return Scaffold(
       backgroundColor: _backgroundColor,
-      body: GestureDetector(
-        onTap: _handleTap,
-        child: Stack(
-          children: [
-            contentAsync.when(
-              data: (content) {
-                // 更新当前章节标题
-                _currentChapterTitle = content.title;
-                return _buildReaderContent(content.title, content.content);
-              },
+      body: NotificationListener<OverscrollNotification>(
+        onNotification: _handleOverscroll,
+        child: GestureDetector(
+          onTap: _handleTap,
+          child: Stack(
+            children: [
+              contentAsync.when(
+                data: (content) {
+                  // 更新当前章节标题
+                  _currentChapterTitle = content.title;
+                  return _buildReaderContent(
+                    content.title, 
+                    content.content,
+                    chaptersAsync.valueOrNull ?? [],
+                  );
+                },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
                 child: Column(
@@ -209,18 +333,23 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
               ),
             ),
 
-            if (_showControls)
-              _buildTopBar(contentAsync.valueOrNull?.title ?? '加载中...'),
+              if (_showControls)
+                _buildTopBar(contentAsync.valueOrNull?.title ?? '加载中...'),
 
-            if (_showControls)
-              _buildBottomBar(chaptersAsync.valueOrNull ?? []),
-          ],
+              if (_showControls)
+                _buildBottomBar(chaptersAsync.valueOrNull ?? []),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildReaderContent(String title, String content) {
+  Widget _buildReaderContent(String title, String content, List chapters) {
+    final textColor = _backgroundColor == const Color(0xFF1C1C1E)
+        ? Colors.white70
+        : Colors.black87;
+    
     return SingleChildScrollView(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
@@ -232,9 +361,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             style: TextStyle(
               fontSize: _fontSize + 4,
               fontWeight: FontWeight.bold,
-              color: _backgroundColor == const Color(0xFF1C1C1E)
-                  ? Colors.white70
-                  : Colors.black87,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 24),
@@ -243,11 +370,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             style: TextStyle(
               fontSize: _fontSize,
               height: _lineHeight,
-              color: _backgroundColor == const Color(0xFF1C1C1E)
-                  ? Colors.white70
-                  : Colors.black87,
+              color: textColor,
             ),
           ),
+          const SizedBox(height: 60),
         ],
       ),
     );
@@ -474,10 +600,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             children: [
               const Text('字体大小', style: TextStyle(fontWeight: FontWeight.w600)),
               Slider(
-                value: _fontSize,
-                min: 12,
+                value: _fontSize.clamp(16, 32),
+                min: 16,
                 max: 32,
-                divisions: 20,
+                divisions: 16,
                 label: _fontSize.toInt().toString(),
                 onChanged: (value) {
                   setModalState(() => _fontSize = value);
@@ -488,10 +614,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
               const SizedBox(height: 16),
               const Text('行间距', style: TextStyle(fontWeight: FontWeight.w600)),
               Slider(
-                value: _lineHeight,
-                min: 1.2,
+                value: _lineHeight.clamp(2.0, 2.5),
+                min: 2.0,
                 max: 2.5,
-                divisions: 13,
+                divisions: 5,
                 label: _lineHeight.toStringAsFixed(1),
                 onChanged: (value) {
                   setModalState(() => _lineHeight = value);

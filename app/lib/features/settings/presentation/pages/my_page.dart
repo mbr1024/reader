@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../app/theme/app_theme.dart';
 import '../../../../core/services/storage_service.dart';
 
-/// "我的"页面 - 大厂风格个人中心
+/// "我的"页面 - 简洁现代风格
 class MyPage extends StatelessWidget {
   const MyPage({super.key});
 
@@ -13,24 +12,33 @@ class MyPage extends StatelessWidget {
     final bookCount = storage.getBookshelf().length;
     
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 用户信息卡片
-              _buildUserCard(context, storage.isLoggedIn),
+              const SizedBox(height: 16),
+              
+              // 顶部标题
+              _buildHeader(),
+              
+              const SizedBox(height: 32),
+              
+              // 用户信息
+              _buildUserSection(context, storage.isLoggedIn),
+              
+              const SizedBox(height: 32),
               
               // 阅读统计
               _buildStatsSection(bookCount),
               
-              // 功能入口
-              _buildFunctionSection(context),
+              const SizedBox(height: 32),
               
-              // 更多服务
-              _buildServiceSection(context),
+              // 功能列表
+              _buildMenuSection(context),
               
-              const SizedBox(height: 24),
+              const SizedBox(height: 48),
             ],
           ),
         ),
@@ -38,34 +46,46 @@ class MyPage extends StatelessWidget {
     );
   }
 
-  Widget _buildUserCard(BuildContext context, bool isLoggedIn) {
-    return GestureDetector(
-      onTap: () {
-        if (!isLoggedIn) {
-          context.push('/login');
-        }
-      },
-      child: Container(
-        color: AppColors.surface,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+  Widget _buildHeader() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24),
+      child: Text(
+        '我的',
+        style: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1A1A1A),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserSection(BuildContext context, bool isLoggedIn) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GestureDetector(
+        onTap: () {
+          if (!isLoggedIn) {
+            context.push('/login');
+          }
+        },
         child: Row(
           children: [
             // 头像
             Container(
-              width: 72,
-              height: 72,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary.withOpacity(0.1),
-                border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(28),
               ),
               child: Icon(
                 isLoggedIn ? Icons.person : Icons.person_outline,
-                size: 40,
-                color: AppColors.primary,
+                size: 28,
+                color: const Color(0xFF888888),
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 16),
             // 用户信息
             Expanded(
               child: Column(
@@ -74,37 +94,26 @@ class MyPage extends StatelessWidget {
                   Text(
                     isLoggedIn ? '书友_9527' : '点击登录',
                     style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  if (isLoggedIn)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFE4E4), // 浅红背景
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '普通用户',
-                        style: TextStyle(fontSize: 11, color: AppColors.primary),
-                      ),
-                    )
-                  else
-                    const Text(
-                      '登录后同步阅读进度',
-                      style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  const SizedBox(height: 4),
+                  Text(
+                    isLoggedIn ? '同步阅读进度中' : '登录后同步阅读进度',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF999999),
                     ),
+                  ),
                 ],
               ),
             ),
-            // 箭头
             const Icon(
               Icons.arrow_forward_ios,
               size: 16,
-              color: AppColors.textHint,
+              color: Color(0xFFCCCCCC),
             ),
           ],
         ),
@@ -114,11 +123,10 @@ class MyPage extends StatelessWidget {
 
   Widget _buildStatsSection(int bookCount) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      // 移除阴影，使用更轻的背景或透明
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 24),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: const Color(0xFFFAFAFA),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -141,18 +149,16 @@ class MyPage extends StatelessWidget {
             value,
             style: const TextStyle(
               fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-              fontFamily: 'Roboto', // 更好看的数字字体
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1A1A1A),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             label,
             style: const TextStyle(
               fontSize: 12,
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w500,
+              color: Color(0xFF999999),
             ),
           ),
         ],
@@ -163,87 +169,109 @@ class MyPage extends StatelessWidget {
   Widget _buildStatDivider() {
     return Container(
       width: 1,
-      height: 24,
-      color: AppColors.divider,
+      height: 32,
+      color: const Color(0xFFE8E8E8),
     );
   }
 
-  Widget _buildFunctionSection(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        // 移除阴影
-      ),
+  Widget _buildMenuSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildFunctionItem(
-            icon: Icons.history,
-            iconColor: const Color(0xFF1677FF),
-            title: '阅读历史',
-            subtitle: '查看阅读记录',
-            onTap: () {},
-          ),
-          const Padding(
-            padding: EdgeInsets.only(left: 60),
-            child: Divider(height: 1),
-          ),
-          _buildFunctionItem(
-            icon: Icons.bookmark_outline,
-            iconColor: const Color(0xFF13C2C2),
-            title: '我的书签',
-            subtitle: '管理所有书签',
-            onTap: () {},
-          ),
-          const Padding(
-            padding: EdgeInsets.only(left: 60),
-            child: Divider(height: 1),
-          ),
-          _buildFunctionItem(
-            icon: Icons.download_outlined,
-            iconColor: const Color(0xFFFAAD14),
-            title: '离线下载',
-            subtitle: '已下载 0 章',
-            onTap: () {},
-          ),
-          const Padding(
-            padding: EdgeInsets.only(left: 60),
-            child: Divider(height: 1),
-          ),
-          _buildFunctionItem(
-            icon: Icons.cloud_sync_outlined,
-            iconColor: const Color(0xFF722ED1),
-            title: '云端同步',
-            subtitle: '多设备同步进度',
-            onTap: () {},
-          ),
+          // 第一组菜单
+          _buildMenuGroup([
+            _MenuItem(
+              icon: Icons.history_outlined,
+              title: '阅读历史',
+              onTap: () => context.push('/reading-history'),
+            ),
+            _MenuItem(
+              icon: Icons.bookmark_outline,
+              title: '我的书签',
+              onTap: () => context.push('/bookmarks'),
+            ),
+            _MenuItem(
+              icon: Icons.download_outlined,
+              title: '离线下载',
+              subtitle: '已下载 0 章',
+              onTap: () => context.push('/downloads'),
+            ),
+            _MenuItem(
+              icon: Icons.cloud_outlined,
+              title: '云端同步',
+              onTap: () => context.push('/sync'),
+            ),
+          ]),
+          
+          const SizedBox(height: 24),
+          
+          // 第二组菜单
+          _buildMenuGroup([
+            _MenuItem(
+              icon: Icons.settings_outlined,
+              title: '设置',
+              onTap: () => context.push('/settings/detail'),
+            ),
+            _MenuItem(
+              icon: Icons.help_outline,
+              title: '帮助与反馈',
+              onTap: () => _showFeedbackDialog(context),
+            ),
+            _MenuItem(
+              icon: Icons.info_outline,
+              title: '关于',
+              onTap: () => _showAboutDialog(context),
+            ),
+          ]),
         ],
       ),
     );
   }
 
-  Widget _buildFunctionItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
+  Widget _buildMenuGroup(List<_MenuItem> items) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFAFA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: items.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          final isLast = index == items.length - 1;
+          
+          return Column(
+            children: [
+              _buildMenuItem(item),
+              if (!isLast)
+                Padding(
+                  padding: const EdgeInsets.only(left: 52),
+                  child: Container(
+                    height: 1,
+                    color: const Color(0xFFEEEEEE),
+                  ),
+                ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem(_MenuItem item) {
+    return GestureDetector(
+      onTap: item.onTap,
+      behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 24),
+            Icon(
+              item.icon,
+              size: 20,
+              color: const Color(0xFF666666),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -251,28 +279,30 @@ class MyPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    item.title,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF1A1A1A),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
+                  if (item.subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF999999),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
             const Icon(
               Icons.arrow_forward_ios,
               size: 14,
-              color: AppColors.textHint,
+              color: Color(0xFFCCCCCC),
             ),
           ],
         ),
@@ -280,83 +310,139 @@ class MyPage extends StatelessWidget {
     );
   }
 
-  Widget _buildServiceSection(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        // 移除阴影
-      ),
-      child: Column(
-        children: [
-          _buildServiceItem(
-            icon: Icons.settings_outlined,
-            title: '设置',
-            onTap: () => context.push('/settings/detail'),
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '关于',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1A1A1A),
           ),
-          const Padding(
-            padding: EdgeInsets.only(left: 60),
-            child: Divider(height: 1),
-          ),
-          _buildServiceItem(
-            icon: Icons.help_outline,
-            title: '帮助与反馈',
-            onTap: () {},
-          ),
-          const Padding(
-            padding: EdgeInsets.only(left: 60),
-            child: Divider(height: 1),
-          ),
-          _buildServiceItem(
-            icon: Icons.info_outline,
-            title: '关于',
-            onTap: () {},
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '小说阅读器 v1.0.0',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '一款简洁优雅的小说阅读应用',
+              style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              '确定',
+              style: TextStyle(
+                color: Color(0xFF1A1A1A),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildServiceItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Row(
+  void _showFeedbackDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '帮助与反馈',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1A1A1A),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: AppColors.textSecondary, size: 24),
+            const Text(
+              '遇到问题或有建议？请告诉我们：',
+              style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              decoration: InputDecoration(
+                hintText: '请输入您的反馈...',
+                hintStyle: const TextStyle(color: Color(0xFFBBBBBB)),
+                filled: true,
+                fillColor: const Color(0xFFF5F5F5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
                 ),
+                contentPadding: const EdgeInsets.all(14),
               ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 14,
-              color: AppColors.textHint,
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              '取消',
+              style: TextStyle(color: Color(0xFF999999)),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('感谢您的反馈！'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: const Color(0xFF333333),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              );
+            },
+            child: const Text(
+              '提交',
+              style: TextStyle(
+                color: Color(0xFF1A1A1A),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _MenuItem {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  _MenuItem({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.onTap,
+  });
 }

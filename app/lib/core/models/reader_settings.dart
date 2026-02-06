@@ -28,7 +28,7 @@ class ReaderSettings {
   factory ReaderSettings.defaults() {
     return ReaderSettings(
       fontSize: 18.0,
-      lineHeight: 1.8,
+      lineHeight: 2.0,
       backgroundColorValue: 0xFFF5F0E1, // 护眼色
       keepScreenOn: false,
     );

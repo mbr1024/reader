@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 启动页背景色（护眼色） -->
+    <color name="launch_background">#F5F0E1</color>
+</resources>

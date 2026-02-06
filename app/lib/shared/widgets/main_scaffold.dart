@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../app/theme/app_theme.dart';
 
+/// 主框架 - 简洁现代风格
 class MainScaffold extends StatelessWidget {
   final Widget child;
 
@@ -12,45 +12,80 @@ class MainScaffold extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: Color(0xFFF0F0F0),
+              width: 0.5,
             ),
-          ],
+          ),
         ),
         child: SafeArea(
-          child: BottomNavigationBar(
-            currentIndex: _calculateSelectedIndex(context),
-            onTap: (index) => _onItemTapped(index, context),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.textMuted,
-            selectedFontSize: 11,
-            unselectedFontSize: 11,
-            type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.menu_book_outlined),
-                activeIcon: Icon(Icons.menu_book),
-                label: '书架',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.explore_outlined),
-                activeIcon: Icon(Icons.explore),
-                label: '发现',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                activeIcon: Icon(Icons.person),
-                label: '我的',
-              ),
-            ],
+          child: SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                _buildNavItem(
+                  context,
+                  index: 0,
+                  icon: Icons.menu_book_outlined,
+                  activeIcon: Icons.menu_book,
+                  label: '书架',
+                ),
+                _buildNavItem(
+                  context,
+                  index: 1,
+                  icon: Icons.explore_outlined,
+                  activeIcon: Icons.explore,
+                  label: '发现',
+                ),
+                _buildNavItem(
+                  context,
+                  index: 2,
+                  icon: Icons.person_outline,
+                  activeIcon: Icons.person,
+                  label: '我的',
+                ),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    BuildContext context, {
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+  }) {
+    final isSelected = _calculateSelectedIndex(context) == index;
+    
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _onItemTapped(index, context),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isSelected ? activeIcon : icon,
+              size: 24,
+              color: isSelected ? const Color(0xFF1A1A1A) : const Color(0xFF999999),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? const Color(0xFF1A1A1A) : const Color(0xFF999999),
+              ),
+            ),
+          ],
         ),
       ),
     );

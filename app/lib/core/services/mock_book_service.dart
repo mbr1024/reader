@@ -2,10 +2,10 @@ import 'package:flutter/services.dart' show rootBundle;
 import '../models/book_models.dart';
 
 /// 本地 Mock 书籍服务
-/// 解析 assets/books/local_novel.txt 文件，提供离线调试功能
+/// 解析 assets/books/三体.txt 文件，提供离线调试功能
 class MockBookService {
-  static const String _assetPath = 'assets/books/local_novel.txt';
-  static const String _bookId = 'local_novel';
+  static const String _assetPath = 'assets/books/三体.txt';
+  static const String _bookId = 'santi';
   static const String _sourceId = 'local';
 
   String? _cachedContent;
@@ -15,12 +15,12 @@ class MockBookService {
   BookDetail getBookDetail() {
     return BookDetail(
       id: _bookId,
-      title: '我炼体的，一拳爆星很正常吧？',
-      author: '布里包子',
-      cover: null,
-      description: '一觉醒来，江河发现自己在精神病院。身为炼体武者，一拳打爆星球也很正常吧？',
-      category: '玄幻',
-      status: '连载中',
+      title: '三体',
+      author: '刘慈欣',
+      cover: 'assets/images/covers/image.png',
+      description: '文化大革命如火如荼进行的同时，军方探寻外星文明的绝秘计划"红岸工程"取得了突破性进展。',
+      category: '科幻',
+      status: '完结',
       chapterCount: null, // 动态计算
       source: _sourceId,
     );
@@ -46,8 +46,8 @@ class MockBookService {
     final chapters = <_ChapterMeta>[];
 
     // 匹配章节标题的正则表达式
-    // 支持 "第X章" 格式（X为数字或中文数字）
-    final chapterRegex = RegExp(r'^第[0-9一二三四五六七八九十百千万]+章\s*.+');
+    // 支持 "第X章" 格式，可选前缀如 "第一部  第X章"
+    final chapterRegex = RegExp(r'^(第[一二三四五六七八九十]+部\s+)?(第[0-9一二三四五六七八九十百千万]+章\s*.+|序)');
 
     int chapterIndex = 0;
     for (int i = 0; i < lines.length; i++) {
