@@ -8,7 +8,6 @@ import '../../features/settings/presentation/pages/my_page.dart';
 import '../../features/settings/presentation/pages/settings_detail_page.dart';
 import '../../features/settings/presentation/pages/reading_history_page.dart';
 import '../../features/settings/presentation/pages/bookmark_page.dart';
-import '../../features/settings/presentation/pages/download_page.dart';
 import '../../features/settings/presentation/pages/sync_page.dart';
 import '../../features/reader/presentation/pages/reader_page.dart';
 import '../../features/book_detail/presentation/pages/book_detail_page.dart';
@@ -76,12 +75,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/bookmarks',
       builder: (context, state) => const BookmarkPage(),
-    ),
-
-    // 离线下载页面
-    GoRoute(
-      path: '/downloads',
-      builder: (context, state) => const DownloadPage(),
     ),
 
     // 云端同步页面

@@ -1,22 +1,25 @@
 #!/bin/bash
 # Release 打包脚本
-# 复制此文件为 build_release.local.sh 并填入你的服务器地址
+# 确保 .env 文件已配置正确的 API_URL
 
-API_URL="http://your-server:3000"
+if [ ! -f .env ]; then
+  echo "错误: 未找到 .env 文件，请先创建并配置 API_URL"
+  exit 1
+fi
 
-echo "Building with API_URL: $API_URL"
+echo "使用 .env 环境变量打包..."
 
 case "$1" in
   apk)
-    flutter build apk --release --dart-define=API_URL=$API_URL
+    flutter build apk --release --dart-define-from-file=.env
     echo "APK 输出: build/app/outputs/flutter-apk/app-release.apk"
     ;;
   aab)
-    flutter build appbundle --release --dart-define=API_URL=$API_URL
+    flutter build appbundle --release --dart-define-from-file=.env
     echo "AAB 输出: build/app/outputs/bundle/release/app-release.aab"
     ;;
   ios)
-    flutter build ios --release --dart-define=API_URL=$API_URL
+    flutter build ios --release --dart-define-from-file=.env
     ;;
   *)
     echo "用法: $0 {apk|aab|ios}"

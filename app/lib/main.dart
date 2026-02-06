@@ -49,7 +49,7 @@ class ReaderApp extends StatelessWidget {
       splitScreenMode: true,
       builder: (context, child) {
         return MaterialApp.router(
-          title: '小说阅读器',
+          title: '绯页',
           debugShowCheckedModeBanner: false,
           // 使用番茄小说风格主题
           theme: AppTheme.tomatoTheme,
