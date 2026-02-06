@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app/assets/images/covers/image.png" width="120" alt="绯页 Logo">
+  <img src="app/assets/images/app_icon.png" width="120" alt="绯页 Logo">
 </p>
 
 <h1 align="center">绯页</h1>
