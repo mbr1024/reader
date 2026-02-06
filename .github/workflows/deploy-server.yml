@@ -14,7 +14,7 @@ on:
   workflow_dispatch: # 支持手动触发
 
 env:
-  APP_DIR: /opt/reader-server
+  APP_DIR: /opt/reader
   REPO_URL: https://github.com/mbr1024/reader.git
 
 jobs:
