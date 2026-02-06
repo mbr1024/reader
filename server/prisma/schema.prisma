@@ -22,10 +22,11 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // 关联
-  bookshelves  Bookshelf[]
-  bookmarks    Bookmark[]
-  syncLogs     SyncLog[]
-  refreshTokens RefreshToken[]
+  bookshelves      Bookshelf[]
+  bookmarks        Bookmark[]
+  syncLogs         SyncLog[]
+  refreshTokens    RefreshToken[]
+  readingHistories ReadingHistory[]
 
   @@map("users")
 }
@@ -117,6 +118,29 @@ model Bookmark {
   chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   @@map("bookmarks")
+}
+
+// 阅读历史表
+model ReadingHistory {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  bookId       String   @map("book_id")
+  sourceId     String   @map("source_id")     // 书源ID
+  sourceType   String   @map("source_type")   // 书源类型
+  bookTitle    String   @map("book_title")
+  bookAuthor   String   @map("book_author")
+  bookCover    String?  @map("book_cover")
+  lastChapter  Int      @default(0) @map("last_chapter")
+  chapterTitle String?  @map("chapter_title")
+  progress     Float    @default(0)           // 阅读进度 0-100
+  readDuration Int      @default(0) @map("read_duration") // 阅读时长(秒)
+  lastReadAt   DateTime @default(now()) @map("last_read_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@map("reading_histories")
 }
 
 // 同步记录表

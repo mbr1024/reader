@@ -5,6 +5,9 @@ import { AppService } from './app.service';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BookSourceModule } from './modules/book-source/book-source.module';
+import { ReadingHistoryModule } from './modules/reading-history/reading-history.module';
+import { BookmarkModule } from './modules/bookmark/bookmark.module';
+import { SyncModule } from './modules/sync/sync.module';
 
 @Module({
   imports: [
@@ -15,6 +18,9 @@ import { BookSourceModule } from './modules/book-source/book-source.module';
     PrismaModule,
     AuthModule,
     BookSourceModule,
+    ReadingHistoryModule,
+    BookmarkModule,
+    SyncModule,
   ],
   controllers: [AppController],
   providers: [AppService],
