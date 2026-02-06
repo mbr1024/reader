@@ -55,8 +55,20 @@ jobs:
             docker build -t reader-server:latest .
             
             # 停止旧服务
-            echo "🔄 Restarting services..."
-            docker compose -f docker-compose.prod.yml down --remove-orphans || true
+            echo "🔄 Stopping old services..."
+            docker compose -f docker-compose.prod.yml down --remove-orphans --timeout 10 || true
+            
+            # 强制停止和删除可能残留的容器
+            docker stop reader-app reader-db 2>/dev/null || true
+            docker rm -f reader-app reader-db 2>/dev/null || true
+            
+            # 检查并释放端口 3000
+            echo "🔍 Checking port 3000..."
+            if lsof -i :3000 >/dev/null 2>&1; then
+              echo "⚠️ Port 3000 is occupied, killing process..."
+              fuser -k 3000/tcp 2>/dev/null || true
+              sleep 2
+            fi
             
             # 启动服务
             docker compose -f docker-compose.prod.yml up -d
