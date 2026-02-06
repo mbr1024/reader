@@ -1,5 +1,6 @@
 # GitHub Actions 工作流 - 服务端自动部署
 # 触发条件: 推送到 main 分支的 server/ 目录变更
+# 部署方式: Git Pull（增量更新，无需上传全量文件）
 
 name: Deploy Server
 
@@ -13,94 +14,56 @@ on:
   workflow_dispatch: # 支持手动触发
 
 env:
-  SERVER_HOST: ${{ secrets.SERVER_HOST }}
-  SERVER_USER: ${{ secrets.SERVER_USER }}
-  SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
-  APP_DIR: /opt/reader-server
+  APP_DIR: /opt/reader
+  REPO_URL: https://github.com/mbr1024/reader.git
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy
+  deploy:
+    name: Deploy via Git Pull
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: server/package-lock.json
-
-      - name: 📦 Install dependencies
-        working-directory: ./server
-        run: npm ci
-
-      - name: 🔍 Run linter
-        working-directory: ./server
-        run: npm run lint || true
-
-      - name: 🏗️ Build project
-        working-directory: ./server
-        run: npm run build
-
-      - name: 📤 Deploy to server
+      - name: 🚀 Deploy to server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            # 创建应用目录
-            mkdir -p ${{ env.APP_DIR }}
+            set -e
             
-            # 安装 Docker (如果未安装)
-            if ! command -v docker &> /dev/null; then
-              echo "Installing Docker..."
-              curl -fsSL https://get.docker.com | sh
-              systemctl enable docker
-              systemctl start docker
+            echo "📥 Updating code via git pull..."
+            
+            # 如果目录不存在，先 clone
+            if [ ! -d "${{ env.APP_DIR }}/.git" ]; then
+              echo "First time setup, cloning repository..."
+              mkdir -p ${{ env.APP_DIR }}
+              git clone ${{ env.REPO_URL }} ${{ env.APP_DIR }}
             fi
             
-            # 安装 Docker Compose (如果未安装)
-            if ! command -v docker compose &> /dev/null; then
-              echo "Installing Docker Compose..."
-              apt-get update && apt-get install -y docker-compose-plugin
-            fi
-
-      - name: 📂 Copy files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          source: "server/"
-          target: ${{ env.APP_DIR }}
-          strip_components: 1
-
-      - name: 🚀 Run deployment
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          script: |
+            # 进入目录并拉取最新代码
             cd ${{ env.APP_DIR }}
+            git fetch origin main
+            git reset --hard origin/main
+            
+            echo "📦 Code updated, building Docker image..."
+            
+            # 进入 server 目录
+            cd server
             
             # 构建镜像
-            echo "🏗️ Building Docker image..."
             docker build -t reader-server:latest .
             
-            # 启动服务
-            echo "🚀 Starting services..."
+            # 停止旧服务
+            echo "🔄 Restarting services..."
             docker compose -f docker-compose.prod.yml down --remove-orphans || true
+            
+            # 启动服务
             docker compose -f docker-compose.prod.yml up -d
             
             # 等待服务启动
-            echo "⏳ Waiting for services..."
-            sleep 15
+            echo "⏳ Waiting for services to start..."
+            sleep 10
             
             # 检查状态
             echo "📊 Service status:"
@@ -108,8 +71,10 @@ jobs:
             
             # 清理旧镜像
             docker image prune -f
+            
+            echo "✅ Deployment completed!"
 
-      - name: ✅ Deployment complete
+      - name: ✅ Done
         run: |
           echo "✅ Deployment completed successfully!"
           echo "🌐 Server: http://${{ secrets.SERVER_HOST }}:3000"
