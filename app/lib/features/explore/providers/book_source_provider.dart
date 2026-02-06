@@ -30,6 +30,11 @@ final searchResultsProvider = FutureProvider<List<BookSearchResult>>((ref) async
 
 final bookDetailProvider = FutureProvider.family<BookDetail, ({String sourceId, String bookId})>(
   (ref, params) async {
+    // 本地调试书籍
+    if (params.sourceId == 'local') {
+      final service = ref.watch(mockBookServiceProvider);
+      return service.getBookDetail();
+    }
     final api = ref.watch(bookSourceApiProvider);
     return api.getBookDetail(params.sourceId, params.bookId);
   },
@@ -37,6 +42,11 @@ final bookDetailProvider = FutureProvider.family<BookDetail, ({String sourceId, 
 
 final chapterListProvider = FutureProvider.family<List<ChapterInfo>, ({String sourceId, String bookId})>(
   (ref, params) async {
+    // 本地调试书籍
+    if (params.sourceId == 'local') {
+      final service = ref.watch(mockBookServiceProvider);
+      return service.getChapterList();
+    }
     final api = ref.watch(bookSourceApiProvider);
     return api.getChapterList(params.sourceId, params.bookId);
   },

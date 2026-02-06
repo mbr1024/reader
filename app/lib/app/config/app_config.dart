@@ -10,15 +10,23 @@ class AppConfig {
   static const String _lanIp = '10.125.247.242'; // 开发时电脑局域网IP
   static const bool _useRealDevice = true; // 开发时真机使用局域网IP
 
+  // 是否在 Debug 模式下也使用生产服务器
+  static const bool _useProductionInDebug = true;
+
   /// 获取 API 基础地址
-  /// Release 模式使用生产服务器，Debug 模式使用本地开发地址
+  /// Release 模式使用生产服务器，Debug 模式可配置
   static String get baseUrl {
     // Release 模式直接使用生产服务器
     if (kReleaseMode) {
       return _productionServer;
     }
 
-    // Debug 模式根据平台选择开发地址
+    // Debug 模式下也使用生产服务器
+    if (_useProductionInDebug) {
+      return _productionServer;
+    }
+
+    // Debug 模式根据平台选择开发地址（备用）
     if (kIsWeb) {
       return 'http://localhost:3000';
     } else if (Platform.isAndroid) {

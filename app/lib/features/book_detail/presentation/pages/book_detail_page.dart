@@ -31,6 +31,26 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     _isInBookshelf = _storage.isInBookshelf(widget.bookId);
   }
 
+  /// 构建封面图片（支持 assets 和网络图片）
+  Widget _buildCoverImage(String coverUrl) {
+    if (coverUrl.startsWith('assets/')) {
+      return Image.asset(
+        coverUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: AppColors.primary.withOpacity(0.1),
+        ),
+      );
+    }
+    return CachedNetworkImage(
+      imageUrl: coverUrl,
+      fit: BoxFit.cover,
+      errorWidget: (_, __, ___) => Container(
+        color: AppColors.primary.withOpacity(0.1),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bookDetailAsync = ref.watch(bookDetailProvider((
@@ -67,13 +87,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                   fit: StackFit.expand,
                   children: [
                     if (book.cover != null)
-                      CachedNetworkImage(
-                        imageUrl: book.cover!,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
-                          color: AppColors.primary.withOpacity(0.1),
-                        ),
-                      )
+                      _buildCoverImage(book.cover!)
                     else
                       Container(color: AppColors.primary.withOpacity(0.1)),
                     Container(

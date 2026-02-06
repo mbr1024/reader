@@ -1,34 +1,35 @@
 import 'package:flutter/material.dart';
 
-/// App 配色方案 - 现代大厂风格
-/// 设计理念：高端、舒适、科技感
-/// 主色调：蔚蓝/青色 (Blue/Teal)
+/// App 配色方案 - 简洁现代风格
+/// 设计理念：极简、留白、高级感
+/// 参考：Linear / Notion / 微信读书
 class AppColors {
-  // 品牌色 - 番茄红
-  static const Color primary = Color(0xFFFF3B30);       // 番茄红/京东红风格
-  static const Color primaryLight = Color(0xFFFF6B63);  // 浅红
-  static const Color primaryDark = Color(0xFFC41C15);   // 深红
-  static const Color secondary = Color(0xFFFFCC00);     // 金黄色 (用于点缀/VIP)
+  // 品牌色 - 深色系（主要用于强调）
+  static const Color primary = Color(0xFF1A1A1A);       // 深黑
+  static const Color primaryLight = Color(0xFF333333);  // 次深
+  static const Color primaryDark = Color(0xFF000000);   // 纯黑
+  static const Color accent = Color(0xFFE53935);        // 强调红（用于通知、错误）
   
-  // 背景色 - 极简灰白
-  static const Color background = Color(0xFFF7F8FA);    // 极浅灰背景
+  // 背景色 - 纯净白灰
+  static const Color background = Color(0xFFFAFAFA);    // 极浅灰背景
   static const Color surface = Color(0xFFFFFFFF);       // 纯白
-  static const Color surfaceVariant = Color(0xFFFFF0F0); // 品牌色相近的浅色容器
+  static const Color surfaceVariant = Color(0xFFF5F5F5); // 输入框/卡片背景
   
-  // 文字色
-  static const Color textPrimary = Color(0xFF222222);   // 主要文字
+  // 文字色 - 层级分明
+  static const Color textPrimary = Color(0xFF1A1A1A);   // 主要文字
   static const Color textSecondary = Color(0xFF666666); // 次要文字
   static const Color textMuted = Color(0xFF999999);     // 辅助文字
-  static const Color textHint = Color(0xFFCCCCCC);      // 提示文字
+  static const Color textHint = Color(0xFFBBBBBB);      // 提示文字
+  static const Color textLight = Color(0xFFAAAAAA);     // 极淡文字
   
   // 边框与分割
-  static const Color border = Color(0xFFE5E5E5);        // 一般边框
+  static const Color border = Color(0xFFE8E8E8);        // 边框
   static const Color divider = Color(0xFFF0F0F0);       // 分割线
   
   // 功能色
-  static const Color success = Color(0xFF34C759);       // 成功绿
-  static const Color warning = Color(0xFFFF9500);       // 警告黄  
-  static const Color error = Color(0xFFFF3B30);         // 错误红
+  static const Color success = Color(0xFF43A047);       // 成功绿
+  static const Color warning = Color(0xFFFFA726);       // 警告黄  
+  static const Color error = Color(0xFFE53935);         // 错误红
   
   // 阅读主题色
   static const Color readingWhite = Color(0xFFFAF9DE);  // 羊皮纸色
@@ -36,7 +37,7 @@ class AppColors {
   static const Color readingDark = Color(0xFF1C1C1E);   // 夜间模式
 }
 
-// 兼容旧的 TomatoColors 引用，方便过渡，实际指向新颜色
+// 兼容旧的 TomatoColors 引用
 class TomatoColors {
   static const Color primary = AppColors.primary;
   static const Color primaryLight = AppColors.primaryLight;
@@ -61,15 +62,15 @@ class TomatoColors {
 }
 
 class AppTheme {
-  // 现代大厂风格 - 浅色主题
+  // 简洁现代风格 - 浅色主题
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     
     colorScheme: const ColorScheme.light(
       primary: AppColors.primary,
-      primaryContainer: AppColors.surfaceVariant, // 使用较浅的变体
-      secondary: AppColors.secondary,
+      primaryContainer: AppColors.surfaceVariant,
+      secondary: AppColors.textSecondary,
       surface: AppColors.surface,
       error: AppColors.error,
       onPrimary: Colors.white,
@@ -82,26 +83,25 @@ class AppTheme {
     
     appBarTheme: const AppBarTheme(
       elevation: 0,
-      scrolledUnderElevation: 0, // 移除滚动时的阴影
-      backgroundColor: AppColors.surface, // 纯白导航栏
+      scrolledUnderElevation: 0,
+      backgroundColor: AppColors.surface,
       foregroundColor: AppColors.textPrimary,
       centerTitle: true,
       titleTextStyle: TextStyle(
         color: AppColors.textPrimary,
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0.5,
+        letterSpacing: 0,
       ),
-      iconTheme: IconThemeData(color: AppColors.textPrimary),
+      iconTheme: IconThemeData(color: AppColors.textPrimary, size: 22),
     ),
     
     cardTheme: CardThemeData(
-      elevation: 2, // 轻微阴影
-      shadowColor: Color(0x1A000000), // 柔和阴影色
+      elevation: 0,
       color: AppColors.surface,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16), // 大圆角
+        borderRadius: BorderRadius.circular(12),
       ),
     ),
     
@@ -111,48 +111,63 @@ class AppTheme {
       unselectedItemColor: AppColors.textMuted,
       type: BottomNavigationBarType.fixed,
       elevation: 0,
-      selectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-      unselectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+      selectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+      unselectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
     ),
     
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.surfaceVariant, // 浅蓝灰色背景输入框
+      fillColor: AppColors.surfaceVariant,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      hintStyle: const TextStyle(color: AppColors.textHint),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      hintStyle: const TextStyle(color: AppColors.textHint, fontWeight: FontWeight.w400),
     ),
     
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        elevation: 1,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
         textStyle: const TextStyle(
-          fontSize: 16,
+          fontSize: 15,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+    
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.textPrimary,
+        side: const BorderSide(color: AppColors.border),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        textStyle: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
         ),
       ),
     ),
     
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: AppColors.primary,
+        foregroundColor: AppColors.textPrimary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -164,29 +179,29 @@ class AppTheme {
     ),
     
     tabBarTheme: const TabBarThemeData(
-      labelColor: AppColors.primary,
-      unselectedLabelColor: AppColors.textSecondary,
+      labelColor: AppColors.textPrimary,
+      unselectedLabelColor: AppColors.textMuted,
       indicatorSize: TabBarIndicatorSize.label,
       indicatorColor: AppColors.primary,
-      labelStyle: TextStyle(fontWeight: FontWeight.bold),
-      unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal),
+      labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+      unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
     ),
     
     dividerTheme: const DividerThemeData(
       color: AppColors.divider,
-      thickness: 0.5,
+      thickness: 1,
       space: 1,
     ),
     
     textTheme: const TextTheme(
-      headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-      headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-      titleMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary), // 常用标题
-      titleSmall: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-      bodyLarge: TextStyle(fontSize: 16, color: AppColors.textPrimary),
-      bodyMedium: TextStyle(fontSize: 14, color: AppColors.textSecondary), // 正文
-      bodySmall: TextStyle(fontSize: 12, color: AppColors.textMuted), // 说明文字
+      headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+      headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      titleMedium: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      titleSmall: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      bodyLarge: TextStyle(fontSize: 16, color: AppColors.textPrimary, fontWeight: FontWeight.w400),
+      bodyMedium: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w400),
+      bodySmall: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w400),
       labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
     ),
   );

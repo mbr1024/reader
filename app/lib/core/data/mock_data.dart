@@ -36,9 +36,23 @@ class MockData {
 
   // 获取封面（随机顺序，尽量不重复）
   static String getCover(int index) => _randomCovers[index % _randomCovers.length];
+
+  // 本地调试书籍 - 三体（可用于调试详情页和阅读器）
+  static const localDebugBook = MockBook(
+    id: 'santi',
+    title: '三体',
+    author: '刘慈欣',
+    cover: 'assets/images/covers/image.png',
+    category: '科幻',
+    description: '文化大革命如火如荼进行的同时，军方探寻外星文明的绝秘计划"红岸工程"取得了突破性进展。',
+    chapterCount: 36,
+    status: '完结',
+  );
   
   // Banner 推荐书籍
   static final bannerBooks = [
+    // 本地调试书籍 - 三体
+    localDebugBook,
     MockBook(
       id: '1',
       title: '斗破苍穹',
