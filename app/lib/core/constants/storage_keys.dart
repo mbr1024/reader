@@ -10,6 +10,7 @@ class StorageKeys {
   static const String localChaptersIndexBox = 'local_ch_index'; // bookId -> JSON章节列表
   static const String localChaptersContentBox = 'local_ch_content'; // bookId_idx -> 内容
   static const String bookmarkBox = 'bookmark_box'; // 书签存储
+  static const String onlineChapterCacheBox = 'online_ch_cache'; // sourceId_bookId_chapterId -> 内容
   
   // Auth Keys
   static const String accessToken = 'access_token';

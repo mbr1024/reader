@@ -7,6 +7,8 @@ import '../../../../core/services/local_book_service.dart';
 import '../../../../core/services/book_source_api.dart';
 import '../../../../core/services/bookshelf_sync_service.dart';
 import '../../../../core/models/bookshelf_item.dart';
+import '../../../../core/ads/ad_config.dart';
+import '../../../../shared/widgets/ads/mock_native_ad.dart';
 import '../../../../shared/utils/toast.dart';
 
 /// 书架页 - 简洁现代风格
@@ -17,7 +19,7 @@ class BookshelfPage extends StatefulWidget {
   State<BookshelfPage> createState() => _BookshelfPageState();
 }
 
-class _BookshelfPageState extends State<BookshelfPage> {
+class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserver {
   final _storage = StorageService.instance;
   final _syncService = BookshelfSyncService.instance;
   List<BookshelfItem> _books = [];
@@ -28,6 +30,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initBookshelf();
     // 启动自动同步（仅已登录用户）
     _syncService.startAutoSync();
@@ -35,13 +38,22 @@ class _BookshelfPageState extends State<BookshelfPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // 页面销毁时不停止同步服务，让它在后台继续运行
     super.dispose();
   }
-
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 应用从后台恢复时刷新书架数据
+    if (state == AppLifecycleState.resumed) {
+      _loadBookshelf();
+    }
+  }
+  
   Future<void> _initBookshelf() async {
-    if (_storage.getBookshelf().isEmpty) {
-      // 从服务端获取默认书架
+    // 只有登录用户且本地书架为空时，才从服务端获取默认书架
+    if (_storage.isLoggedIn && _storage.getBookshelf().isEmpty) {
       try {
         final api = BookSourceApi();
         final recommendations = await api.getRecommendations();
@@ -68,6 +80,20 @@ class _BookshelfPageState extends State<BookshelfPage> {
       _books = _storage.getBookshelf();
       _sortBooks();
     });
+  }
+
+  /// 计算网格总项数（书籍 + 广告）
+  int _calculateGridItemCount() {
+    if (_books.isEmpty) return 0;
+    
+    final adInterval = AdConfig.instance.bookshelfAdInterval;
+    final adsEnabled = AdConfig.instance.adsEnabled && AdConfig.instance.nativeEnabled;
+    
+    if (!adsEnabled) return _books.length;
+    
+    // 每 adInterval 本书后插入一个广告
+    int adCount = _books.length ~/ adInterval;
+    return _books.length + adCount;
   }
 
   void _sortBooks() {
@@ -130,7 +156,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
             final importResult = await LocalBookService.instance.importBook(file.path!);
 
             // 检查是否已在书架
-            if (_storage.isInBookshelf(importResult.bookId)) {
+            if (_storage.isInBookshelf(importResult.bookId, sourceId: 'local')) {
               // 已存在，跳过但不算失败
               lastTitle = importResult.title;
               successCount++;
@@ -216,7 +242,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
           
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
           
-          // 书籍网格
+          // 书籍网格（带广告插入）
           if (_isGridView)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -228,8 +254,27 @@ class _BookshelfPageState extends State<BookshelfPage> {
                   mainAxisSpacing: 24,
                 ),
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildBookItem(_books[index]),
-                  childCount: _books.length,
+                  (context, index) {
+                    // 计算广告插入逻辑
+                    final adInterval = AdConfig.instance.bookshelfAdInterval;
+                    final adsEnabled = AdConfig.instance.adsEnabled && AdConfig.instance.nativeEnabled;
+                    
+                    if (adsEnabled && index > 0 && (index + 1) % (adInterval + 1) == 0) {
+                      // 这个位置显示广告
+                      return const MockNativeAd(isGridStyle: true);
+                    }
+                    
+                    // 计算实际书籍索引（扣除已插入的广告数）
+                    int adCount = adsEnabled ? index ~/ (adInterval + 1) : 0;
+                    int bookIndex = index - adCount;
+                    
+                    if (bookIndex >= _books.length) {
+                      return const SizedBox.shrink();
+                    }
+                    
+                    return _buildBookItem(_books[bookIndex]);
+                  },
+                  childCount: _calculateGridItemCount(),
                 ),
               ),
             )
@@ -367,12 +412,17 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   Widget _buildRecentReading() {
-    final recent = _books.first;
+    // 找到最近阅读的书籍（有 lastReadAt 的优先，否则用 addedAt）
+    final recent = _books.reduce((a, b) {
+      final aTime = a.lastReadAt ?? a.addedAt;
+      final bTime = b.lastReadAt ?? b.addedAt;
+      return aTime.isAfter(bTime) ? a : b;
+    });
     final lastChapterId = recent.lastChapterId ?? '0';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: GestureDetector(
-        onTap: () => context.push('/reader/${recent.sourceId}/${recent.bookId}/$lastChapterId'),
+        onTap: () => context.push('/reader/${recent.sourceId}/${recent.bookId}/$lastChapterId').then((_) => _loadBookshelf()),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -486,7 +536,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     return GestureDetector(
       onLongPress: () => _showBookOptions(book),
       onTap: () {
-        context.push('/reader/${book.sourceId}/${book.bookId}/$lastChapterId');
+        context.push('/reader/${book.sourceId}/${book.bookId}/$lastChapterId').then((_) => _loadBookshelf());
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,7 +618,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     return GestureDetector(
       onLongPress: () => _showBookOptions(book),
       onTap: () {
-        context.push('/reader/${book.sourceId}/${book.bookId}/$lastChapterId');
+        context.push('/reader/${book.sourceId}/${book.bookId}/$lastChapterId').then((_) => _loadBookshelf());
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -756,7 +806,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
                     onTap: () {
                       Navigator.pop(context);
                       final lastChapterId = book.lastChapterId ?? '0';
-                      context.push('/reader/${book.sourceId}/${book.bookId}/$lastChapterId');
+                      context.push('/reader/${book.sourceId}/${book.bookId}/$lastChapterId').then((_) => _loadBookshelf());
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1116,7 +1166,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
                 
                 // 异步删除，不阻塞主线程
                 Future.microtask(() async {
-                  await _storage.removeFromBookshelf(book.bookId);
+                  await _storage.removeFromBookshelf(book.bookId, sourceId: book.sourceId);
                   // 如果是本地书籍，同时清理所有章节数据
                   if (isLocal) {
                     await LocalBookService.instance.clearBook(book.bookId);

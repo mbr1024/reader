@@ -6,6 +6,9 @@ import '../../../../core/services/storage_service.dart';
 import '../../../../core/models/reading_progress.dart';
 import '../../../../core/models/reader_settings.dart';
 import '../../../../core/models/book_models.dart';
+import '../../../../core/models/bookmark_item.dart';
+import '../../../../core/ads/ad_config.dart';
+import '../../../../shared/widgets/ads/mock_banner_ad.dart';
 import '../../../../shared/utils/toast.dart';
 
 class ReaderPage extends ConsumerStatefulWidget {
@@ -57,6 +60,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   double _autoScrollSpeed = 50.0;
 
   bool _initialized = false;
+  
+  // 书籍标题（用于书签）
+  String _bookTitle = '';
 
   @override
   void initState() {
@@ -83,12 +89,30 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     if (_initialized) return;
     _initialized = true;
     _chapters = chapters;
+    
+    // 获取书籍标题
+    final bookshelfItem = _storage.getBookshelfItem(widget.bookId, sourceId: widget.sourceId);
+    _bookTitle = bookshelfItem?.title ?? '未知书籍';
+    
+    // 打开阅读器时立即更新最后阅读时间
+    if (bookshelfItem != null) {
+      _storage.addToBookshelf(bookshelfItem.copyWith(
+        lastReadAt: DateTime.now(),
+      ));
+    }
 
     int idx = chapters.indexWhere((c) => c.id == widget.chapterId);
     if (idx < 0) idx = 0;
 
     final progress = _storage.getProgress(widget.bookId);
-    if (progress != null && progress.chapterIndex < chapters.length) {
+    
+    // 只有当传入的 chapterId 是 "0"（表示继续阅读）时，才使用保存的进度
+    // 如果用户从目录点击了具体章节，应该跳转到那个章节
+    final bool useProgress = widget.chapterId == '0' && 
+                             progress != null && 
+                             progress.chapterIndex < chapters.length;
+    
+    if (useProgress) {
       idx = progress.chapterIndex;
     }
 
@@ -100,7 +124,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     _firstIndex = idx;
     _lastIndex = preloadLast;
 
-    if (progress != null && progress.scrollPosition > 0) {
+    // 只有在使用进度恢复时才滚动到之前的位置
+    if (useProgress && progress!.scrollPosition > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           _scrollController.jumpTo(progress.scrollPosition.clamp(
@@ -196,6 +221,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   void _saveProgress() {
     if (_chapters.isEmpty) return;
     final idx = _currentChapterIndex.clamp(0, _chapters.length - 1);
+    final now = DateTime.now();
+    
+    // 保存阅读进度
     _storage.saveProgress(ReadingProgress(
       bookId: widget.bookId,
       sourceId: widget.sourceId,
@@ -203,8 +231,18 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       chapterTitle: _chapters[idx].title,
       chapterIndex: idx,
       scrollPosition: _scrollController.hasClients ? _scrollController.offset : 0,
-      updatedAt: DateTime.now(),
+      updatedAt: now,
     )).catchError((e) => debugPrint('保存进度失败: $e'));
+    
+    // 更新书架项的最后阅读时间和章节信息
+    final bookshelfItem = _storage.getBookshelfItem(widget.bookId, sourceId: widget.sourceId);
+    if (bookshelfItem != null) {
+      _storage.addToBookshelf(bookshelfItem.copyWith(
+        lastReadAt: now,
+        lastChapterId: _chapters[idx].id,
+        lastChapterTitle: _chapters[idx].title,
+      )).catchError((e) => debugPrint('更新书架项失败: $e'));
+    }
   }
 
   Future<void> _saveSettings() async {
@@ -212,6 +250,47 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       fontSize: _fontSize, lineHeight: _lineHeight,
       backgroundColorValue: _backgroundColor.toARGB32(),
     ));
+  }
+
+  // ===== 书签 =====
+  
+  void _addBookmark() {
+    if (_chapters.isEmpty) return;
+    
+    final chapterIndex = _currentChapterIndex.clamp(0, _chapters.length - 1);
+    final chapter = _chapters[chapterIndex];
+    
+    // 检查是否已存在相同书签（同一书籍、同一章节）
+    final existingBookmarks = _storage.getBookmarksByBookId(widget.bookId)
+        .where((b) => b.chapterIndex == chapterIndex)
+        .toList();
+    
+    if (existingBookmarks.isNotEmpty) {
+      Toast.show(context, '本章已有书签');
+      return;
+    }
+    
+    final bookmark = BookmarkItem(
+      id: '${widget.bookId}_${chapterIndex}_${DateTime.now().millisecondsSinceEpoch}',
+      bookId: widget.bookId,
+      sourceId: widget.sourceId,
+      bookTitle: _bookTitle,
+      chapterIndex: chapterIndex,
+      chapterTitle: chapter.title,
+      position: _scrollController.hasClients ? _scrollController.offset.toInt() : 0,
+      content: chapter.title, // 使用章节标题作为内容摘要
+      createdAt: DateTime.now(),
+    );
+    
+    _storage.addBookmark(bookmark);
+    Toast.show(context, '已添加书签');
+  }
+  
+  bool _hasBookmarkForCurrentChapter() {
+    if (_chapters.isEmpty) return false;
+    final chapterIndex = _currentChapterIndex.clamp(0, _chapters.length - 1);
+    return _storage.getBookmarksByBookId(widget.bookId)
+        .any((b) => b.chapterIndex == chapterIndex);
   }
 
   // ===== 自动滚动 =====
@@ -326,14 +405,34 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildChapterItem(int chapterIdx, Color textColor) {
     _itemKeys.putIfAbsent(chapterIdx, () => GlobalKey());
-    return _ChapterWidget(
+    
+    // 判断是否在章节末尾显示广告（每隔 readerChapterInterval 章显示一次）
+    final showAd = AdConfig.instance.adsEnabled && 
+                   AdConfig.instance.bannerEnabled &&
+                   chapterIdx > 0 && 
+                   (chapterIdx + 1) % AdConfig.instance.readerChapterInterval == 0;
+    
+    return Column(
       key: _itemKeys[chapterIdx],
-      chapter: _chapters[chapterIdx],
-      sourceId: widget.sourceId,
-      bookId: widget.bookId,
-      fontSize: _fontSize,
-      lineHeight: _lineHeight,
-      textColor: textColor,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ChapterWidget(
+          chapter: _chapters[chapterIdx],
+          sourceId: widget.sourceId,
+          bookId: widget.bookId,
+          fontSize: _fontSize,
+          lineHeight: _lineHeight,
+          textColor: textColor,
+        ),
+        // 章节间广告
+        if (showAd)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: MockBannerAd(
+              height: 72,
+            ),
+          ),
+      ],
     );
   }
 
@@ -356,8 +455,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             Expanded(child: Text(title,
               style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
               maxLines: 1, overflow: TextOverflow.ellipsis)),
-            IconButton(icon: const Icon(Icons.bookmark_border, color: Colors.white),
-              onPressed: () => Toast.show(context, '已添加书签')),
+            IconButton(
+              icon: Icon(
+                _hasBookmarkForCurrentChapter() ? Icons.bookmark : Icons.bookmark_border,
+                color: _hasBookmarkForCurrentChapter() ? Colors.amber : Colors.white,
+              ),
+              onPressed: _addBookmark,
+            ),
           ])),
         ),
       ),

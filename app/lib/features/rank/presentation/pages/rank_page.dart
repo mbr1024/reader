@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/models/book_models.dart';
+import '../../../../core/ads/ad_config.dart';
+import '../../../../shared/widgets/ads/mock_native_ad.dart';
 import '../../../explore/providers/book_source_provider.dart';
 
 /// 排行榜页面 - 简洁现代风格
@@ -117,10 +119,36 @@ class _RankPageState extends ConsumerState<RankPage> with SingleTickerProviderSt
     final displayBooks = List<RecommendBook>.from(books);
     if (tabName != '畅销榜') displayBooks.shuffle();
 
+    final maxBooks = displayBooks.length > 20 ? 20 : displayBooks.length;
+    final adInterval = AdConfig.instance.rankAdInterval;
+    final adsEnabled = AdConfig.instance.adsEnabled && AdConfig.instance.nativeEnabled;
+    
+    // 计算总项数（包含广告）
+    int adCount = adsEnabled ? maxBooks ~/ adInterval : 0;
+    int totalCount = maxBooks + adCount;
+
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-      itemCount: displayBooks.length > 20 ? 20 : displayBooks.length,
-      itemBuilder: (context, index) => _buildRankItem(index, displayBooks[index]),
+      itemCount: totalCount,
+      itemBuilder: (context, index) {
+        // 判断是否显示广告
+        if (adsEnabled && index > 0 && (index + 1) % (adInterval + 1) == 0) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: MockNativeAd(),
+          );
+        }
+        
+        // 计算实际书籍索引
+        int adsBefore = adsEnabled ? index ~/ (adInterval + 1) : 0;
+        int bookIndex = index - adsBefore;
+        
+        if (bookIndex >= maxBooks) {
+          return const SizedBox.shrink();
+        }
+        
+        return _buildRankItem(bookIndex, displayBooks[bookIndex]);
+      },
     );
   }
 

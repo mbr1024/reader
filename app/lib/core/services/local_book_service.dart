@@ -347,7 +347,7 @@ class LocalBookService {
         : 0;
 
     // 从书架获取标题/作者信息
-    final bookshelfItem = _storage.getBookshelfItem(bookId);
+    final bookshelfItem = _storage.getBookshelfItem(bookId, sourceId: 'local');
 
     return BookDetail(
       id: bookId,

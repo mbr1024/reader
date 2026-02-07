@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/ads/ad_config.dart';
+import '../../../../shared/widgets/ads/mock_banner_ad.dart';
 import '../../../../shared/utils/toast.dart';
 
 /// "我的"页面 - 简洁现代风格
@@ -50,7 +52,11 @@ class _MyPageState extends State<MyPage> {
               _buildUserSection(),
               const SizedBox(height: 32),
               _buildStatsSection(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+              // 广告位
+              if (AdConfig.instance.adsEnabled && AdConfig.instance.bannerEnabled)
+                const MockBannerAd(),
+              const SizedBox(height: 24),
               _buildMenuSection(),
               const SizedBox(height: 24),
               if (_isLoggedIn) _buildLogoutButton(),

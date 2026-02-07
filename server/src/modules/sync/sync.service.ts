@@ -75,6 +75,9 @@ export class SyncService {
       }
 
       // 更新或创建书架项
+      // 使用客户端传来的 lastReadAt，如果没有则使用当前时间
+      const lastReadAt = item.lastReadAt ? new Date(item.lastReadAt) : new Date();
+      
       await this.prisma.bookshelf.upsert({
         where: {
           userId_bookId: { userId, bookId: book.id },
@@ -83,7 +86,7 @@ export class SyncService {
           lastChapter: item.lastChapter,
           lastPosition: item.lastPosition,
           isTop: item.isTop,
-          lastReadAt: new Date(),
+          lastReadAt,
         },
         create: {
           userId,
@@ -91,6 +94,7 @@ export class SyncService {
           lastChapter: item.lastChapter,
           lastPosition: item.lastPosition,
           isTop: item.isTop,
+          lastReadAt,
         },
       });
     }

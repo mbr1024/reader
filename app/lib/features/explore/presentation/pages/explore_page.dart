@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/models/book_models.dart';
+import '../../../../core/ads/ad_config.dart';
+import '../../../../core/ads/ad_service.dart';
+import '../../../../shared/widgets/ads/mock_banner_ad.dart';
+import '../../../../shared/widgets/ads/mock_native_ad.dart';
 import '../../providers/book_source_provider.dart';
 
 /// 发现页 - 简洁现代风格
@@ -112,7 +116,13 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
         SliverToBoxAdapter(child: _buildSectionTitle('热门推荐', showMore: true)),
         SliverToBoxAdapter(child: _buildHorizontalList(recommendations.hotBooks)),
         
-        const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        
+        // 广告位 - 信息流广告
+        if (AdConfig.instance.adsEnabled && AdConfig.instance.nativeEnabled)
+          const SliverToBoxAdapter(child: MockNativeAd()),
+        
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
         
         // 新书上架
         SliverToBoxAdapter(child: _buildSectionTitle('新书上架', showMore: true)),
@@ -139,6 +149,12 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
             ),
           ),
         ),
+        
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        
+        // 底部广告位 - Banner 广告
+        if (AdConfig.instance.adsEnabled && AdConfig.instance.bannerEnabled)
+          const SliverToBoxAdapter(child: MockBannerAd()),
         
         const SliverToBoxAdapter(child: SizedBox(height: 48)),
       ],
@@ -282,99 +298,224 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
       return const SizedBox(height: 160);
     }
 
+    // 计算总轮播数（书籍 + 广告）
+    // 每隔 2 本书插入 1 个广告
+    final adsEnabled = AdConfig.instance.adsEnabled && AdConfig.instance.bannerEnabled;
+    final adInterval = 2; // 每 2 本书后插入广告
+    final adCount = adsEnabled ? banners.length ~/ adInterval : 0;
+    final totalCount = banners.length + adCount;
+
     return SizedBox(
       height: 160,
       child: PageView.builder(
         controller: _pageController,
-        itemCount: banners.length,
+        itemCount: totalCount,
         itemBuilder: (context, index) {
-          final book = banners[index];
-          return GestureDetector(
-            onTap: () => context.push('/book/${book.source}/${book.id}'),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
+          // 判断当前位置是否为广告
+          if (adsEnabled && index > 0 && (index + 1) % (adInterval + 1) == 0) {
+            return _buildFeaturedAdBanner();
+          }
+          
+          // 计算实际书籍索引
+          int adsBefore = adsEnabled ? index ~/ (adInterval + 1) : 0;
+          int bookIndex = index - adsBefore;
+          
+          if (bookIndex >= banners.length) {
+            return const SizedBox.shrink();
+          }
+          
+          final book = banners[bookIndex];
+          return _buildFeaturedBookItem(book);
+        },
+      ),
+    );
+  }
+
+  Widget _buildFeaturedBookItem(RecommendBook book) {
+    return GestureDetector(
+      onTap: () => context.push('/book/${book.source}/${book.id}'),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              book.category ?? '',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            book.title,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            book.description ?? '',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.white.withOpacity(0.6),
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        book.category ?? '',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white70,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 20),
-                    Container(
-                      width: 80,
-                      height: 110,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 16,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                    const SizedBox(height: 12),
+                    Text(
+                      book.title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: book.cover != null
-                            ? Image.network(
-                                book.cover!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
-                              )
-                            : _buildPlaceholderCover(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      book.description ?? '',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.6),
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 20),
+              Container(
+                width: 80,
+                height: 110,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: book.cover != null
+                      ? Image.network(
+                          book.cover!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
+                        )
+                      : _buildPlaceholderCover(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 精选推荐广告的样式
+  static const List<List<Color>> _featuredAdColors = [
+    [Color(0xFF1A1A2E), Color(0xFF16213E)], // 深蓝游戏风
+    [Color(0xFF2C3E50), Color(0xFF4CA1AF)], // 商务蓝
+    [Color(0xFF373B44), Color(0xFF4286f4)], // 科技蓝
+    [Color(0xFF134E5E), Color(0xFF71B280)], // 自然绿
+  ];
+
+  /// 精选推荐区域的广告 Banner
+  Widget _buildFeaturedAdBanner() {
+    final ad = AdService.instance.getBannerAd();
+    if (ad == null) return const SizedBox.shrink();
+
+    // 根据广告 ID 选择配色
+    final colorIndex = ad.id.hashCode.abs() % _featuredAdColors.length;
+    final colors = _featuredAdColors[colorIndex];
+
+    return GestureDetector(
+      onTap: () => AdService.instance.trackClick(ad),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: colors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Stack(
+          children: [
+            // 内容
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            '广告',
+                            style: TextStyle(fontSize: 10, color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          ad.title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          ad.description ?? '',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      ad.actionText ?? '了解更多',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colors[0],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }

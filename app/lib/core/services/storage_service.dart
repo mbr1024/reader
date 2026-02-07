@@ -21,6 +21,7 @@ class StorageService {
   late Box<String> _localChaptersIndexBox; // bookId -> JSON章节标题列表
   late Box<String> _localChaptersContentBox; // bookId_idx -> 章节内容
   late Box<BookmarkItem> _bookmarkBox; // 书签
+  late Box<String> _onlineChapterCacheBox; // sourceId_bookId_chapterId -> 章节内容JSON
   
   bool _initialized = false;
   
@@ -51,6 +52,7 @@ class StorageService {
     _localChaptersIndexBox = await Hive.openBox<String>(StorageKeys.localChaptersIndexBox);
     _localChaptersContentBox = await Hive.openBox<String>(StorageKeys.localChaptersContentBox);
     _bookmarkBox = await Hive.openBox<BookmarkItem>(StorageKeys.bookmarkBox);
+    _onlineChapterCacheBox = await Hive.openBox<String>(StorageKeys.onlineChapterCacheBox);
     
     _initialized = true;
   }
@@ -79,28 +81,36 @@ class StorageService {
   
   // ============ 书架相关 ============
   
+  /// 生成书架项的唯一 key（sourceId:bookId）
+  String _bookshelfKey(String sourceId, String bookId) => '$sourceId:$bookId';
+  
   List<BookshelfItem> getBookshelf() {
     return _bookshelfBox.values.toList();
   }
   
-  BookshelfItem? getBookshelfItem(String bookId) {
-    return _bookshelfBox.get(bookId);
+  BookshelfItem? getBookshelfItem(String bookId, {required String sourceId}) {
+    return _bookshelfBox.get(_bookshelfKey(sourceId, bookId));
   }
   
   Future<void> addToBookshelf(BookshelfItem item) async {
-    await _bookshelfBox.put(item.bookId, item);
+    await _bookshelfBox.put(_bookshelfKey(item.sourceId, item.bookId), item);
   }
   
-  Future<void> removeFromBookshelf(String bookId) async {
-    await _bookshelfBox.delete(bookId);
+  Future<void> removeFromBookshelf(String bookId, {required String sourceId}) async {
+    await _bookshelfBox.delete(_bookshelfKey(sourceId, bookId));
   }
   
-  bool isInBookshelf(String bookId) {
-    return _bookshelfBox.containsKey(bookId);
+  bool isInBookshelf(String bookId, {required String sourceId}) {
+    return _bookshelfBox.containsKey(_bookshelfKey(sourceId, bookId));
   }
   
   Future<void> updateBookshelfItem(BookshelfItem item) async {
-    await _bookshelfBox.put(item.bookId, item);
+    await _bookshelfBox.put(_bookshelfKey(item.sourceId, item.bookId), item);
+  }
+  
+  /// 清空书架（开发调试用）
+  Future<void> clearBookshelf() async {
+    await _bookshelfBox.clear();
   }
   
   // ============ 本地书籍文件路径 ============
@@ -243,4 +253,61 @@ class StorageService {
       await _bookmarkBox.deleteAll(keysToDelete);
     }
   }
+
+  // ============ 在线章节缓存相关 ============
+  
+  /// 生成在线章节缓存的 key
+  String _onlineCacheKey(String sourceId, String bookId, String chapterId) {
+    return '${sourceId}_${bookId}_$chapterId';
+  }
+  
+  /// 缓存在线章节内容
+  Future<void> cacheOnlineChapter(
+    String sourceId,
+    String bookId,
+    String chapterId,
+    String contentJson,
+  ) async {
+    final key = _onlineCacheKey(sourceId, bookId, chapterId);
+    await _onlineChapterCacheBox.put(key, contentJson);
+  }
+  
+  /// 获取缓存的在线章节内容
+  String? getCachedOnlineChapter(
+    String sourceId,
+    String bookId,
+    String chapterId,
+  ) {
+    final key = _onlineCacheKey(sourceId, bookId, chapterId);
+    return _onlineChapterCacheBox.get(key);
+  }
+  
+  /// 检查在线章节是否已缓存
+  bool hasOnlineChapterCache(
+    String sourceId,
+    String bookId,
+    String chapterId,
+  ) {
+    final key = _onlineCacheKey(sourceId, bookId, chapterId);
+    return _onlineChapterCacheBox.containsKey(key);
+  }
+  
+  /// 删除某本书的所有在线章节缓存
+  Future<void> clearOnlineChapterCache(String sourceId, String bookId) async {
+    final prefix = '${sourceId}_${bookId}_';
+    final keysToDelete = _onlineChapterCacheBox.keys
+        .where((key) => key.toString().startsWith(prefix))
+        .toList();
+    if (keysToDelete.isNotEmpty) {
+      await _onlineChapterCacheBox.deleteAll(keysToDelete);
+    }
+  }
+  
+  /// 清空所有在线章节缓存
+  Future<void> clearAllOnlineChapterCache() async {
+    await _onlineChapterCacheBox.clear();
+  }
+  
+  /// 获取在线章节缓存大小（条目数）
+  int get onlineChapterCacheCount => _onlineChapterCacheBox.length;
 }

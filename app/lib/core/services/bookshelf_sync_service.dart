@@ -75,6 +75,7 @@ class BookshelfSyncService {
         'lastChapter': int.tryParse(item.lastChapterId ?? '0') ?? 0,
         'lastPosition': 0,
         'isTop': item.isTop,
+        'lastReadAt': item.lastReadAt?.toIso8601String(),
       })).toList(),
     };
 
@@ -115,6 +116,12 @@ class BookshelfSyncService {
       final key = '$sourceId:$bookId';
       if (!localBookIds.contains(key)) {
         // 本地没有，添加
+        final lastReadAtStr = item['lastReadAt'] as String?;
+        DateTime? lastReadAt;
+        if (lastReadAtStr != null) {
+          lastReadAt = DateTime.tryParse(lastReadAtStr);
+        }
+        
         await _storage.addToBookshelf(BookshelfItem(
           bookId: bookId,
           sourceId: sourceId,
@@ -123,6 +130,7 @@ class BookshelfSyncService {
           cover: book['cover'] as String?,
           category: book['category'] as String?,
           addedAt: DateTime.now(),
+          lastReadAt: lastReadAt,
           isTop: item['isTop'] as bool? ?? false,
         ));
       }

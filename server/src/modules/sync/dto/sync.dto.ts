@@ -25,6 +25,10 @@ export class BookshelfItemDto {
   lastChapter: number;
   lastPosition: number;
   isTop: boolean;
+  
+  @IsOptional()
+  @IsString()
+  lastReadAt?: string; // ISO 时间戳
 }
 
 // 阅读进度

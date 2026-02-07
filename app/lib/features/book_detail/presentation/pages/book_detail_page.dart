@@ -7,6 +7,8 @@ import '../../../explore/providers/book_source_provider.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/bookshelf_sync_service.dart';
 import '../../../../core/models/bookshelf_item.dart';
+import '../../../../core/ads/ad_config.dart';
+import '../../../../shared/widgets/ads/mock_banner_ad.dart';
 import '../../../../shared/utils/toast.dart';
 
 class BookDetailPage extends ConsumerStatefulWidget {
@@ -30,7 +32,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   @override
   void initState() {
     super.initState();
-    _isInBookshelf = _storage.isInBookshelf(widget.bookId);
+    _isInBookshelf = _storage.isInBookshelf(widget.bookId, sourceId: widget.sourceId);
   }
 
   /// 构建封面图片（支持 assets 和网络图片）
@@ -220,6 +222,15 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
               ),
             ),
 
+            // 广告位 - Banner 广告
+            if (AdConfig.instance.adsEnabled && AdConfig.instance.bannerEnabled)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: MockBannerAd(),
+                ),
+              ),
+
             // 章节列表标题
             SliverToBoxAdapter(
               child: Padding(
@@ -361,7 +372,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   }
 
   Future<void> _removeFromBookshelf() async {
-    await _storage.removeFromBookshelf(widget.bookId);
+    await _storage.removeFromBookshelf(widget.bookId, sourceId: widget.sourceId);
     setState(() => _isInBookshelf = false);
     // 非本地书籍触发同步
     if (widget.sourceId != 'local') {

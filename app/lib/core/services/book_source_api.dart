@@ -1,8 +1,11 @@
+import 'dart:convert';
 import '../network/api_client.dart';
 import '../models/book_models.dart';
+import './storage_service.dart';
 
 class BookSourceApi {
   final ApiClient _client = ApiClient.instance;
+  final StorageService _storage = StorageService.instance;
 
   /// 获取推荐数据（banner、热门、新书、热搜等）
   Future<RecommendationsData> getRecommendations() async {
@@ -44,8 +47,25 @@ class BookSourceApi {
     String bookId,
     String chapterId,
   ) async {
+    // 尝试从本地缓存读取
+    final cachedJson = _storage.getCachedOnlineChapter(sourceId, bookId, chapterId);
+    if (cachedJson != null) {
+      try {
+        final data = jsonDecode(cachedJson) as Map<String, dynamic>;
+        return ChapterContent.fromJson(data);
+      } catch (_) {
+        // 缓存数据损坏，继续从网络获取
+      }
+    }
+    
+    // 从网络获取
     final response = await _client.get('/book-source/book/$sourceId/$bookId/chapter/$chapterId');
-    return ChapterContent.fromJson(response.data as Map<String, dynamic>);
+    final data = response.data as Map<String, dynamic>;
+    
+    // 缓存到本地
+    _storage.cacheOnlineChapter(sourceId, bookId, chapterId, jsonEncode(data));
+    
+    return ChapterContent.fromJson(data);
   }
 
   Future<void> importLegadoSource(String source) async {
