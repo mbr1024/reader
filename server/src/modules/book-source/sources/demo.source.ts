@@ -236,16 +236,8 @@ export class DemoSource implements IBookSource {
       hotBooks: this.hotBookIds.map(id => this.getBookSummary(id)),
       newBooks: this.newBookIds.map(id => this.getBookSummary(id)),
       hotSearch: this.hotSearchKeywords,
-      defaultBookshelf: this.getRandomBookshelf(),
+      defaultBookshelf: [], // 书架数据由 controller 根据登录状态处理
     };
-  }
-
-  // 随机获取 8-12 本书作为默认书架
-  private getRandomBookshelf() {
-    const allBookIds = this.books.map(b => b.id);
-    const shuffled = [...allBookIds].sort(() => Math.random() - 0.5);
-    const count = 8 + Math.floor(Math.random() * 5); // 8-12 本
-    return shuffled.slice(0, count).map(id => this.getBookSummary(id));
   }
 
   // 获取书籍摘要（用于推荐列表）

@@ -1,18 +1,57 @@
-import { Controller, Get, Post, Delete, Query, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { BookSourceService } from './book-source.service';
 import { DemoSource } from './sources/demo.source';
+import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('book-source')
 export class BookSourceController {
   constructor(
     private readonly bookSourceService: BookSourceService,
     private readonly demoSource: DemoSource,
+    private readonly prisma: PrismaService,
   ) {}
 
   // 获取推荐数据（banner、热门、新书、热搜等）
   @Get('recommendations')
-  getRecommendations() {
-    return this.demoSource.getRecommendations();
+  @UseGuards(OptionalJwtAuthGuard)
+  async getRecommendations(@Request() req) {
+    const recommendations = this.demoSource.getRecommendations();
+    
+    // 未登录用户不返回书架
+    if (!req.user) {
+      return {
+        ...recommendations,
+        defaultBookshelf: [],
+      };
+    }
+    
+    // 已登录用户返回真实书架
+    const bookshelf = await this.prisma.bookshelf.findMany({
+      where: { userId: req.user.id },
+      include: { book: true },
+      orderBy: [{ isTop: 'desc' }, { lastReadAt: 'desc' }],
+    });
+    
+    // 转换为 app 需要的格式
+    const userBookshelf = bookshelf.map(item => ({
+      id: item.book.sourceId,
+      title: item.book.title,
+      author: item.book.author,
+      cover: item.book.cover,
+      category: null,
+      description: null,
+      chapterCount: null,
+      status: null,
+      source: item.book.sourceType,
+      lastChapter: item.lastChapter,
+      isTop: item.isTop,
+    }));
+    
+    return {
+      ...recommendations,
+      defaultBookshelf: userBookshelf,
+    };
   }
 
   // 导入 Legado 书源 (支持 JSON 字符串或 URL)

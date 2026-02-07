@@ -6,8 +6,10 @@ import { BiqugeSource } from './sources/biquge.source';
 import { DemoSource } from './sources/demo.source';
 import { FanqieSource } from './sources/fanqie.source';
 import { LegadoSourceParser } from './services/legado-parser.service';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
+  imports: [PrismaModule],
   controllers: [BookSourceController],
   providers: [
     BookSourceService,
