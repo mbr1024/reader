@@ -66,22 +66,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Webhook 服务 - 接收 Gitee 推送事件触发自动部署
-  webhook:
-    image: almir/webhook:2.8.0
-    container_name: reader-webhook
-    restart: unless-stopped
-    ports:
-      - "9000:9000"
-    volumes:
-      - ./webhook:/etc/webhook:ro
-      - ./scripts:/scripts:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /opt/reader-server:/opt/reader-server
-    command: -verbose -hooks=/etc/webhook/hooks.json -hotreload
-    networks:
-      - reader-network
-
 networks:
   reader-network:
     driver: bridge
