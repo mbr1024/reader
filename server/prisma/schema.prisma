@@ -156,3 +156,4 @@ model SyncLog {
 
   @@map("sync_logs")
 }
+

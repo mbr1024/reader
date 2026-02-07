@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/bookshelf_sync_service.dart';
 import 'auth_models.dart';
 
 /// 认证服务
@@ -34,6 +35,9 @@ class AuthService {
         userId: authResponse.user.id,
       );
       
+      // 登录成功后启动自动同步
+      BookshelfSyncService.instance.startAutoSync();
+      
       return authResponse;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -58,6 +62,9 @@ class AuthService {
         refreshToken: authResponse.refreshToken,
         userId: authResponse.user.id,
       );
+      
+      // 登录成功后启动自动同步
+      BookshelfSyncService.instance.startAutoSync();
       
       return authResponse;
     } on DioException catch (e) {
@@ -88,6 +95,9 @@ class AuthService {
         userId: authResponse.user.id,
       );
       
+      // 注册成功后启动自动同步
+      BookshelfSyncService.instance.startAutoSync();
+      
       return authResponse;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -96,6 +106,9 @@ class AuthService {
   
   /// 登出
   Future<void> logout() async {
+    // 先停止自动同步
+    BookshelfSyncService.instance.stopAutoSync();
+    
     try {
       final refreshToken = _storage.refreshToken;
       if (refreshToken != null) {

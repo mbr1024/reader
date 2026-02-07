@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/local_book_service.dart';
 import '../../../../core/services/book_source_api.dart';
+import '../../../../core/services/bookshelf_sync_service.dart';
 import '../../../../core/models/bookshelf_item.dart';
 import '../../../../shared/utils/toast.dart';
 
@@ -18,6 +19,7 @@ class BookshelfPage extends StatefulWidget {
 
 class _BookshelfPageState extends State<BookshelfPage> {
   final _storage = StorageService.instance;
+  final _syncService = BookshelfSyncService.instance;
   List<BookshelfItem> _books = [];
   String _sortBy = 'recent'; // recent, added, title, author
   bool _isGridView = true;
@@ -27,6 +29,14 @@ class _BookshelfPageState extends State<BookshelfPage> {
   void initState() {
     super.initState();
     _initBookshelf();
+    // 启动自动同步（仅已登录用户）
+    _syncService.startAutoSync();
+  }
+
+  @override
+  void dispose() {
+    // 页面销毁时不停止同步服务，让它在后台继续运行
+    super.dispose();
   }
 
   Future<void> _initBookshelf() async {
@@ -1110,6 +1120,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
                   // 如果是本地书籍，同时清理所有章节数据
                   if (isLocal) {
                     await LocalBookService.instance.clearBook(book.bookId);
+                  } else {
+                    // 非本地书籍触发同步
+                    _syncService.onBookRemoved();
                   }
                   if (mounted) {
                     _loadBookshelf();

@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../explore/providers/book_source_provider.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/bookshelf_sync_service.dart';
 import '../../../../core/models/bookshelf_item.dart';
 import '../../../../shared/utils/toast.dart';
 
@@ -350,6 +351,10 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     );
     await _storage.addToBookshelf(item);
     setState(() => _isInBookshelf = true);
+    // 非本地书籍触发同步
+    if (widget.sourceId != 'local') {
+      BookshelfSyncService.instance.onBookAdded();
+    }
     if (mounted) {
       Toast.show(context, '已加入书架');
     }
@@ -358,6 +363,10 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   Future<void> _removeFromBookshelf() async {
     await _storage.removeFromBookshelf(widget.bookId);
     setState(() => _isInBookshelf = false);
+    // 非本地书籍触发同步
+    if (widget.sourceId != 'local') {
+      BookshelfSyncService.instance.onBookRemoved();
+    }
     if (mounted) {
       Toast.show(context, '已从书架移除');
     }
