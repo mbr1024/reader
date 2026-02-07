@@ -1,8 +1,6 @@
 # 生产环境 Docker Compose 配置
 # 用于火山引擎服务器部署
 
-version: '3.8'
-
 services:
   # NestJS 应用
   app:
