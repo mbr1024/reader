@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/data/mock_data.dart';
+import '../../../../core/models/book_models.dart';
+import '../../providers/book_source_provider.dart';
 
 /// 发现页 - 简洁现代风格
 class ExplorePage extends ConsumerStatefulWidget {
@@ -15,7 +16,6 @@ class ExplorePage extends ConsumerStatefulWidget {
 class _ExplorePageState extends ConsumerState<ExplorePage> {
   final _searchController = TextEditingController();
   
-  int _currentBanner = 0;
   late PageController _pageController;
   Timer? _bannerTimer;
   static const _bannerDuration = Duration(seconds: 5);
@@ -30,17 +30,20 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
   void _startBannerTimer() {
     _bannerTimer?.cancel();
     _bannerTimer = Timer.periodic(_bannerDuration, (timer) {
-      if (_pageController.hasClients) {
-        int nextPage = _pageController.page!.round() + 1;
-        if (nextPage >= MockData.bannerBooks.length) {
-          nextPage = 0;
+      final recommendationsAsync = ref.read(recommendationsProvider);
+      recommendationsAsync.whenData((data) {
+        if (_pageController.hasClients && data.banners.isNotEmpty) {
+          int nextPage = _pageController.page!.round() + 1;
+          if (nextPage >= data.banners.length) {
+            nextPage = 0;
+          }
+          _pageController.animateToPage(
+            nextPage,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          );
         }
-        _pageController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
-      }
+      });
     });
   }
 
@@ -54,78 +57,91 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
 
   @override
   Widget build(BuildContext context) {
+    final recommendationsAsync = ref.watch(recommendationsProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            await Future.delayed(const Duration(milliseconds: 1000));
+            ref.invalidate(recommendationsProvider);
+            await ref.read(recommendationsProvider.future);
           },
           color: const Color(0xFF1A1A1A),
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              
-              // 标题
-              SliverToBoxAdapter(child: _buildHeader()),
-              
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-              
-              // 搜索栏
-              SliverToBoxAdapter(child: _buildSearchBar()),
-              
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              
-              // 分类入口
-              SliverToBoxAdapter(child: _buildCategories()),
-              
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
-              
-              // 精选推荐
-              SliverToBoxAdapter(child: _buildSectionTitle('精选推荐')),
-              SliverToBoxAdapter(child: _buildFeaturedBooks()),
-              
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
-              
-              // 热门推荐
-              SliverToBoxAdapter(child: _buildSectionTitle('热门推荐', showMore: true)),
-              SliverToBoxAdapter(child: _buildHorizontalList(MockData.hotBooks)),
-              
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
-              
-              // 新书上架
-              SliverToBoxAdapter(child: _buildSectionTitle('新书上架', showMore: true)),
-              SliverToBoxAdapter(child: _buildHorizontalList(MockData.newBooks)),
-              
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
-              
-              // 猜你喜欢
-              SliverToBoxAdapter(child: _buildSectionTitle('猜你喜欢')),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    childAspectRatio: 0.58,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 20,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final allBooks = [...MockData.hotBooks, ...MockData.newBooks];
-                      return _buildBookCard(allBooks[index % allBooks.length]);
-                    },
-                    childCount: MockData.allBooks.length > 12 ? 12 : MockData.allBooks.length, 
-                  ),
-                ),
-              ),
-              
-              const SliverToBoxAdapter(child: SizedBox(height: 48)),
-            ],
+          child: recommendationsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('加载失败: $e')),
+            data: (recommendations) => _buildContent(recommendations),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildContent(RecommendationsData recommendations) {
+    final allBooks = [...recommendations.hotBooks, ...recommendations.newBooks];
+    final guessBooks = allBooks.length > 12 ? allBooks.sublist(0, 12) : allBooks;
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        
+        // 标题
+        SliverToBoxAdapter(child: _buildHeader()),
+        
+        const SliverToBoxAdapter(child: SizedBox(height: 20)),
+        
+        // 搜索栏
+        SliverToBoxAdapter(child: _buildSearchBar(recommendations.hotSearch)),
+        
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        
+        // 分类入口
+        SliverToBoxAdapter(child: _buildCategories()),
+        
+        const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        
+        // 精选推荐
+        SliverToBoxAdapter(child: _buildSectionTitle('精选推荐')),
+        SliverToBoxAdapter(child: _buildFeaturedBooks(recommendations.banners)),
+        
+        const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        
+        // 热门推荐
+        SliverToBoxAdapter(child: _buildSectionTitle('热门推荐', showMore: true)),
+        SliverToBoxAdapter(child: _buildHorizontalList(recommendations.hotBooks)),
+        
+        const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        
+        // 新书上架
+        SliverToBoxAdapter(child: _buildSectionTitle('新书上架', showMore: true)),
+        SliverToBoxAdapter(child: _buildHorizontalList(recommendations.newBooks)),
+        
+        const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        
+        // 猜你喜欢
+        SliverToBoxAdapter(child: _buildSectionTitle('猜你喜欢')),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 0.58,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 20,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return _buildBookCard(guessBooks[index % guessBooks.length]);
+              },
+              childCount: guessBooks.length, 
+            ),
+          ),
+        ),
+        
+        const SliverToBoxAdapter(child: SizedBox(height: 48)),
+      ],
     );
   }
 
@@ -143,11 +159,11 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(List<String> hotSearch) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: GestureDetector(
-        onTap: () => _showSearchSheet(),
+        onTap: () => _showSearchSheet(hotSearch),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
@@ -261,19 +277,20 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
     );
   }
 
-  Widget _buildFeaturedBooks() {
+  Widget _buildFeaturedBooks(List<RecommendBook> banners) {
+    if (banners.isEmpty) {
+      return const SizedBox(height: 160);
+    }
+
     return SizedBox(
       height: 160,
       child: PageView.builder(
         controller: _pageController,
-        onPageChanged: (index) => setState(() => _currentBanner = index),
-        itemCount: MockData.bannerBooks.length,
+        itemCount: banners.length,
         itemBuilder: (context, index) {
-          final book = MockData.bannerBooks[index];
-          // 本地调试书籍使用 local sourceId
-          final sourceId = book.id == 'santi' ? 'local' : 'demo';
+          final book = banners[index];
           return GestureDetector(
-            onTap: () => context.push('/book/$sourceId/${book.id}'),
+            onTap: () => context.push('/book/${book.source}/${book.id}'),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
               decoration: BoxDecoration(
@@ -296,7 +313,7 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              book.category,
+                              book.category ?? '',
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: Colors.white70,
@@ -316,7 +333,7 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            book.description,
+                            book.description ?? '',
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.white.withOpacity(0.6),
@@ -343,13 +360,13 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          book.cover,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: const Color(0xFF333333),
-                          ),
-                        ),
+                        child: book.cover != null
+                            ? Image.network(
+                                book.cover!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
+                              )
+                            : _buildPlaceholderCover(),
                       ),
                     ),
                   ],
@@ -362,7 +379,24 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
     );
   }
 
-  Widget _buildHorizontalList(List<MockBook> books) {
+  Widget _buildPlaceholderCover({bool dark = true}) {
+    return Container(
+      color: dark ? const Color(0xFF333333) : const Color(0xFFF5F5F5),
+      child: Center(
+        child: Icon(
+          Icons.menu_book_outlined,
+          color: dark ? const Color(0xFF666666) : const Color(0xFFCCCCCC),
+          size: dark ? 32 : 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHorizontalList(List<RecommendBook> books) {
+    if (books.isEmpty) {
+      return const SizedBox(height: 180);
+    }
+
     return SizedBox(
       height: 180,
       child: ListView.separated(
@@ -378,9 +412,9 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
     );
   }
 
-  Widget _buildBookCard(MockBook book) {
+  Widget _buildBookCard(RecommendBook book) {
     return GestureDetector(
-      onTap: () => context.push('/book/demo/${book.id}'),
+      onTap: () => context.push('/book/${book.source}/${book.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -398,21 +432,14 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  book.cover,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: const Color(0xFFF5F5F5),
-                    child: const Center(
-                      child: Icon(
-                        Icons.menu_book_outlined,
-                        color: Color(0xFFCCCCCC),
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
+                child: book.cover != null
+                    ? Image.network(
+                        book.cover!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildPlaceholderCover(dark: false),
+                      )
+                    : _buildPlaceholderCover(dark: false),
               ),
             ),
           ),
@@ -442,7 +469,7 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
     );
   }
 
-  void _showSearchSheet() {
+  void _showSearchSheet(List<String> hotSearch) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -503,7 +530,7 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
-                children: MockData.hotSearch.map((tag) =>
+                children: hotSearch.map((tag) =>
                   GestureDetector(
                     onTap: () {
                       Navigator.pop(context);

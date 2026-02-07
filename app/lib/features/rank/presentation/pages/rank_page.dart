@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/data/mock_data.dart';
+import '../../../../core/models/book_models.dart';
+import '../../../explore/providers/book_source_provider.dart';
 
 /// 排行榜页面 - 简洁现代风格
-class RankPage extends StatefulWidget {
+class RankPage extends ConsumerStatefulWidget {
   const RankPage({super.key});
 
   @override
-  State<RankPage> createState() => _RankPageState();
+  ConsumerState<RankPage> createState() => _RankPageState();
 }
 
-class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin {
+class _RankPageState extends ConsumerState<RankPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _tabs = ['畅销榜', '人气榜', '新书榜', '完结榜'];
 
@@ -28,6 +30,8 @@ class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
+    final recommendationsAsync = ref.watch(recommendationsProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -41,9 +45,13 @@ class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin
             
             // 列表内容
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: _tabs.map((tab) => _buildRankList(tab)).toList(),
+              child: recommendationsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('加载失败: $e')),
+                data: (recommendations) => TabBarView(
+                  controller: _tabController,
+                  children: _tabs.map((tab) => _buildRankList(tab, recommendations)).toList(),
+                ),
               ),
             ),
           ],
@@ -99,23 +107,28 @@ class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget _buildRankList(String tabName) {
+  Widget _buildRankList(String tabName, RecommendationsData recommendations) {
     // 模拟不同榜单的数据
-    final books = [...MockData.hotBooks, ...MockData.newBooks, ...MockData.bannerBooks];
-    if (tabName != '畅销榜') books.shuffle();
+    final books = [...recommendations.hotBooks, ...recommendations.newBooks, ...recommendations.banners];
+    if (books.isEmpty) {
+      return const Center(child: Text('暂无数据'));
+    }
+    
+    final displayBooks = List<RecommendBook>.from(books);
+    if (tabName != '畅销榜') displayBooks.shuffle();
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-      itemCount: books.length > 20 ? 20 : books.length,
-      itemBuilder: (context, index) => _buildRankItem(index, books[index]),
+      itemCount: displayBooks.length > 20 ? 20 : displayBooks.length,
+      itemBuilder: (context, index) => _buildRankItem(index, displayBooks[index]),
     );
   }
 
-  Widget _buildRankItem(int index, MockBook book) {
+  Widget _buildRankItem(int index, RecommendBook book) {
     final isTop3 = index < 3;
     
     return GestureDetector(
-      onTap: () => context.push('/book/demo/${book.id}'),
+      onTap: () => context.push('/book/${book.source}/${book.id}'),
       behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -150,16 +163,13 @@ class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
-                child: Image.asset(
-                  book.cover,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: const Color(0xFFF5F5F5),
-                    child: const Center(
-                      child: Icon(Icons.menu_book_outlined, color: Color(0xFFCCCCCC), size: 20),
-                    ),
-                  ),
-                ),
+                child: book.cover != null
+                    ? Image.network(
+                        book.cover!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
+                      )
+                    : _buildPlaceholderCover(),
               ),
             ),
             
@@ -182,7 +192,7 @@ class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    book.description,
+                    book.description ?? '',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -207,7 +217,7 @@ class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin
                         color: const Color(0xFFEEEEEE),
                       ),
                       Text(
-                        book.category,
+                        book.category ?? '',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF999999),
@@ -228,6 +238,15 @@ class _RankPageState extends State<RankPage> with SingleTickerProviderStateMixin
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderCover() {
+    return Container(
+      color: const Color(0xFFF5F5F5),
+      child: const Center(
+        child: Icon(Icons.menu_book_outlined, color: Color(0xFFCCCCCC), size: 20),
       ),
     );
   }

@@ -1,9 +1,19 @@
 import { Controller, Get, Post, Delete, Query, Param, Body } from '@nestjs/common';
 import { BookSourceService } from './book-source.service';
+import { DemoSource } from './sources/demo.source';
 
 @Controller('book-source')
 export class BookSourceController {
-  constructor(private readonly bookSourceService: BookSourceService) {}
+  constructor(
+    private readonly bookSourceService: BookSourceService,
+    private readonly demoSource: DemoSource,
+  ) {}
+
+  // 获取推荐数据（banner、热门、新书、热搜等）
+  @Get('recommendations')
+  getRecommendations() {
+    return this.demoSource.getRecommendations();
+  }
 
   // 导入 Legado 书源 (支持 JSON 字符串或 URL)
   @Post('import')

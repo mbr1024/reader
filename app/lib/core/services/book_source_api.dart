@@ -4,6 +4,12 @@ import '../models/book_models.dart';
 class BookSourceApi {
   final ApiClient _client = ApiClient.instance;
 
+  /// 获取推荐数据（banner、热门、新书、热搜等）
+  Future<RecommendationsData> getRecommendations() async {
+    final response = await _client.get('/book-source/recommendations');
+    return RecommendationsData.fromJson(response.data as Map<String, dynamic>);
+  }
+
   Future<List<BookSource>> getSources() async {
     final response = await _client.get('/book-source/sources');
     final List<dynamic> data = response.data as List<dynamic>;

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../constants/storage_keys.dart';
 import '../models/bookshelf_item.dart';
@@ -48,23 +47,6 @@ class StorageService {
     _localChaptersContentBox = await Hive.openBox<String>(StorageKeys.localChaptersContentBox);
     
     _initialized = true;
-
-    // 修复/迁移旧的封面数据 (Fix for renamed assets)
-    // 如果封面路径不符合新的 "number.webp" 格式，则重新随机分配
-    try {
-      final oldFormatRegex = RegExp(r'assets/images/covers/\d+\.webp$');
-      for (var item in _bookshelfBox.values) {
-        if (item.cover != null && !oldFormatRegex.hasMatch(item.cover!)) {
-          final newCoverId = (item.bookId.hashCode % 38) + 1;
-          final newItem = item.copyWith(
-            cover: 'assets/images/covers/$newCoverId.webp',
-          );
-          await _bookshelfBox.put(item.bookId, newItem);
-        }
-      }
-    } catch (e) {
-      debugPrint('Error migrating covers: $e');
-    }
   }
   
   // ============ Auth 相关 ============
@@ -182,6 +164,15 @@ class StorageService {
     await _localChaptersContentBox.put('${bookId}_$index', content);
   }
 
+  /// 批量保存章节内容（减少 I/O 次数）
+  Future<void> saveChapterContents(String bookId, List<String> contents) async {
+    final entries = <String, String>{};
+    for (int i = 0; i < contents.length; i++) {
+      entries['${bookId}_$i'] = contents[i];
+    }
+    await _localChaptersContentBox.putAll(entries);
+  }
+
   /// 读取单章内容（同步，极快）
   String? getChapterContent(String bookId, int index) {
     return _localChaptersContentBox.get('${bookId}_$index');
@@ -190,12 +181,12 @@ class StorageService {
   /// 删除某本书的全部章节数据
   Future<void> removeLocalBookData(String bookId) async {
     await _localChaptersIndexBox.delete(bookId);
-    // 删除所有章节内容
+    // 删除所有章节内容 - 使用 deleteAll 批量删除，避免多次 I/O
     final keysToDelete = _localChaptersContentBox.keys
         .where((key) => key.toString().startsWith('${bookId}_'))
         .toList();
-    for (final key in keysToDelete) {
-      await _localChaptersContentBox.delete(key);
+    if (keysToDelete.isNotEmpty) {
+      await _localChaptersContentBox.deleteAll(keysToDelete);
     }
     await _localBooksBox.delete(bookId);
   }

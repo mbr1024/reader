@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/data/mock_data.dart';
+import '../../../../core/models/book_models.dart';
+import '../../providers/book_source_provider.dart';
 
 /// 分类页面类型
 enum CategoryType {
@@ -11,16 +13,16 @@ enum CategoryType {
 }
 
 /// 分类页面 - 简洁现代风格
-class CategoryPage extends StatefulWidget {
+class CategoryPage extends ConsumerStatefulWidget {
   final CategoryType type;
   
   const CategoryPage({super.key, required this.type});
 
   @override
-  State<CategoryPage> createState() => _CategoryPageState();
+  ConsumerState<CategoryPage> createState() => _CategoryPageState();
 }
 
-class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderStateMixin {
+class _CategoryPageState extends ConsumerState<CategoryPage> with SingleTickerProviderStateMixin {
   TabController? _tabController;
   String _selectedSubCategory = '全部';
   String _sortBy = 'hot'; // hot, new, update
@@ -76,6 +78,8 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final recommendationsAsync = ref.watch(recommendationsProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -83,11 +87,23 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
           children: [
             _buildHeader(),
             if (widget.type == CategoryType.all)
-              _buildAllCategoriesView()
+              Expanded(
+                child: recommendationsAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('加载失败: $e')),
+                  data: (recommendations) => _buildAllCategoriesView(recommendations),
+                ),
+              )
             else ...[
               _buildSubCategories(),
               _buildSortBar(),
-              Expanded(child: _buildBookList()),
+              Expanded(
+                child: recommendationsAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('加载失败: $e')),
+                  data: (recommendations) => _buildBookList(recommendations),
+                ),
+              ),
             ],
           ],
         ),
@@ -172,11 +188,11 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
           const Spacer(),
           GestureDetector(
             onTap: () {},
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(Icons.filter_list, size: 18, color: Color(0xFF666666)),
-                const SizedBox(width: 4),
-                const Text(
+                Icon(Icons.filter_list, size: 18, color: Color(0xFF666666)),
+                SizedBox(width: 4),
+                Text(
                   '筛选',
                   style: TextStyle(fontSize: 13, color: Color(0xFF666666)),
                 ),
@@ -203,21 +219,27 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildBookList() {
-    final books = [...MockData.hotBooks, ...MockData.newBooks, ...MockData.bannerBooks];
-    if (_sortBy == 'new') books.shuffle();
-    if (_sortBy == 'update') books.shuffle();
+  Widget _buildBookList(RecommendationsData recommendations) {
+    final books = [...recommendations.hotBooks, ...recommendations.newBooks, ...recommendations.banners];
+    if (books.isEmpty) {
+      return const Center(child: Text('暂无数据'));
+    }
+    
+    // 根据排序方式显示不同顺序
+    final displayBooks = List<RecommendBook>.from(books);
+    if (_sortBy == 'new') displayBooks.shuffle();
+    if (_sortBy == 'update') displayBooks.shuffle();
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-      itemCount: books.length,
-      itemBuilder: (context, index) => _buildBookItem(books[index]),
+      itemCount: displayBooks.length,
+      itemBuilder: (context, index) => _buildBookItem(displayBooks[index]),
     );
   }
 
-  Widget _buildBookItem(MockBook book) {
+  Widget _buildBookItem(RecommendBook book) {
     return GestureDetector(
-      onTap: () => context.push('/book/demo/${book.id}'),
+      onTap: () => context.push('/book/${book.source}/${book.id}'),
       behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -239,16 +261,13 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
-                child: Image.asset(
-                  book.cover,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: const Color(0xFFF5F5F5),
-                    child: const Center(
-                      child: Icon(Icons.menu_book_outlined, color: Color(0xFFCCCCCC), size: 24),
-                    ),
-                  ),
-                ),
+                child: book.cover != null
+                    ? Image.network(
+                        book.cover!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
+                      )
+                    : _buildPlaceholderCover(),
               ),
             ),
             
@@ -271,7 +290,7 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    book.description,
+                    book.description ?? '',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -303,14 +322,14 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          book.category,
+                          book.category ?? '',
                           style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF666666),
                           ),
                         ),
                       ),
-                      if (book.status == '完结') ...[
+                      if (book.status == 'completed') ...[
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -338,50 +357,61 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildAllCategoriesView() {
-    return Expanded(
-      child: Column(
-        children: [
-          // 分类 Tab
-          Container(
-            margin: const EdgeInsets.only(top: 16),
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              labelColor: const Color(0xFF1A1A1A),
-              unselectedLabelColor: const Color(0xFF999999),
-              labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400),
-              indicatorColor: const Color(0xFF1A1A1A),
-              indicatorWeight: 2,
-              indicatorSize: TabBarIndicatorSize.label,
-              dividerColor: Colors.transparent,
-              splashFactory: NoSplash.splashFactory,
-              overlayColor: WidgetStateProperty.all(Colors.transparent),
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              labelPadding: const EdgeInsets.only(right: 24),
-              tabs: _allCategories.map((c) => Tab(text: c['name'] as String)).toList(),
-            ),
-          ),
-          
-          // 分类内容
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: _allCategories.map((cat) {
-                return _buildCategoryContent(cat['name'] as String);
-              }).toList(),
-            ),
-          ),
-        ],
+  Widget _buildPlaceholderCover() {
+    return Container(
+      color: const Color(0xFFF5F5F5),
+      child: const Center(
+        child: Icon(Icons.menu_book_outlined, color: Color(0xFFCCCCCC), size: 24),
       ),
     );
   }
 
-  Widget _buildCategoryContent(String categoryName) {
-    final books = [...MockData.hotBooks, ...MockData.newBooks, ...MockData.bannerBooks];
-    books.shuffle();
+  Widget _buildAllCategoriesView(RecommendationsData recommendations) {
+    return Column(
+      children: [
+        // 分类 Tab
+        Container(
+          margin: const EdgeInsets.only(top: 16),
+          child: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            labelColor: const Color(0xFF1A1A1A),
+            unselectedLabelColor: const Color(0xFF999999),
+            labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400),
+            indicatorColor: const Color(0xFF1A1A1A),
+            indicatorWeight: 2,
+            indicatorSize: TabBarIndicatorSize.label,
+            dividerColor: Colors.transparent,
+            splashFactory: NoSplash.splashFactory,
+            overlayColor: WidgetStateProperty.all(Colors.transparent),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            labelPadding: const EdgeInsets.only(right: 24),
+            tabs: _allCategories.map((c) => Tab(text: c['name'] as String)).toList(),
+          ),
+        ),
+        
+        // 分类内容
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: _allCategories.map((cat) {
+              return _buildCategoryContent(cat['name'] as String, recommendations);
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryContent(String categoryName, RecommendationsData recommendations) {
+    final books = [...recommendations.hotBooks, ...recommendations.newBooks, ...recommendations.banners];
+    if (books.isEmpty) {
+      return const Center(child: Text('暂无数据'));
+    }
+    
+    final displayBooks = List<RecommendBook>.from(books)..shuffle();
 
     return CustomScrollView(
       slivers: [
@@ -422,8 +452,8 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
               mainAxisSpacing: 20,
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, index) => _buildBookCard(books[index]),
-              childCount: books.length > 9 ? 9 : books.length,
+              (context, index) => _buildBookCard(displayBooks[index % displayBooks.length]),
+              childCount: displayBooks.length > 9 ? 9 : displayBooks.length,
             ),
           ),
         ),
@@ -459,7 +489,7 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
           delegate: SliverChildBuilderDelegate(
             (context, index) => Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _buildBookItem(books[(index + 5) % books.length]),
+              child: _buildBookItem(displayBooks[(index + 5) % displayBooks.length]),
             ),
             childCount: 5,
           ),
@@ -470,9 +500,9 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildBookCard(MockBook book) {
+  Widget _buildBookCard(RecommendBook book) {
     return GestureDetector(
-      onTap: () => context.push('/book/demo/${book.id}'),
+      onTap: () => context.push('/book/${book.source}/${book.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -490,17 +520,14 @@ class _CategoryPageState extends State<CategoryPage> with SingleTickerProviderSt
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  book.cover,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: const Color(0xFFF5F5F5),
-                    child: const Center(
-                      child: Icon(Icons.menu_book_outlined, color: Color(0xFFCCCCCC), size: 24),
-                    ),
-                  ),
-                ),
+                child: book.cover != null
+                    ? Image.network(
+                        book.cover!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
+                      )
+                    : _buildPlaceholderCover(),
               ),
             ),
           ),

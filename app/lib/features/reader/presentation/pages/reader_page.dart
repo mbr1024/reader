@@ -92,10 +92,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       idx = progress.chapterIndex;
     }
 
+    // 预加载下一章，确保有足够内容可滚动
+    final preloadLast = (idx + 1 < chapters.length) ? idx + 1 : idx;
+
     _currentChapterIndex = idx;
     _anchorIndex = idx;
     _firstIndex = idx;
-    _lastIndex = idx;
+    _lastIndex = preloadLast;
 
     if (progress != null && progress.scrollPosition > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -170,15 +173,21 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
     // 否则重置，以目标章为新锚点
     _itemKeys.clear();
+    
+    // 预加载下一章，确保有足够内容可滚动
+    final preloadLast = (index + 1 < _chapters.length) ? index + 1 : index;
+    
     setState(() {
       _currentChapterIndex = index;
       _anchorIndex = index;
       _firstIndex = index;
-      _lastIndex = index;
+      _lastIndex = preloadLast;
       _showControls = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) _scrollController.jumpTo(0);
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
     });
   }
 

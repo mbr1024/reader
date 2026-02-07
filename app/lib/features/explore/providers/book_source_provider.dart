@@ -1,11 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/book_models.dart';
 import '../../../core/services/book_source_api.dart';
-import '../../../core/services/mock_book_service.dart';
 import '../../../core/services/local_book_service.dart';
 
 final bookSourceApiProvider = Provider<BookSourceApi>((ref) {
   return BookSourceApi();
+});
+
+/// 推荐数据 Provider（banner、热门、新书、热搜等）
+final recommendationsProvider = FutureProvider<RecommendationsData>((ref) async {
+  final api = ref.watch(bookSourceApiProvider);
+  try {
+    return await api.getRecommendations();
+  } catch (e) {
+    // 如果获取失败，返回空数据
+    return RecommendationsData.empty;
+  }
 });
 
 final bookSourcesProvider = FutureProvider<List<BookSource>>((ref) async {
@@ -32,7 +42,7 @@ final searchResultsProvider = FutureProvider<List<BookSearchResult>>((ref) async
 final bookDetailProvider = FutureProvider.family<BookDetail, ({String sourceId, String bookId})>(
   (ref, params) async {
     if (params.sourceId == 'local') {
-      // 先尝试本地导入书籍
+      // 本地导入书籍
       final localService = LocalBookService.instance;
       return localService.getBookDetail(params.bookId);
     }
@@ -60,28 +70,5 @@ final chapterContentProvider = FutureProvider.family<ChapterContent, ({String so
     }
     final api = ref.watch(bookSourceApiProvider);
     return api.getChapterContent(params.sourceId, params.bookId, params.chapterId);
-  },
-);
-
-// ============ 本地 Mock 书籍 Provider（保留兼容） ============
-
-final mockBookServiceProvider = Provider<MockBookService>((ref) {
-  return MockBookService();
-});
-
-final localBookDetailProvider = Provider<BookDetail>((ref) {
-  final service = ref.watch(mockBookServiceProvider);
-  return service.getBookDetail();
-});
-
-final localChapterListProvider = FutureProvider<List<ChapterInfo>>((ref) async {
-  final service = ref.watch(mockBookServiceProvider);
-  return service.getChapterList();
-});
-
-final localChapterContentProvider = FutureProvider.family<ChapterContent, String>(
-  (ref, chapterId) async {
-    final service = ref.watch(mockBookServiceProvider);
-    return service.getChapterContent(chapterId);
   },
 );

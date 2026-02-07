@@ -8,7 +8,7 @@ import {
 
 /**
  * 示例书源 - 用于测试和演示
- * 包含一些公版书籍数据
+ * 包含推荐数据和示例书籍
  */
 @Injectable()
 export class DemoSource implements IBookSource {
@@ -16,73 +16,249 @@ export class DemoSource implements IBookSource {
   readonly name = '示例书库';
   readonly baseUrl = '';
 
-  // 示例书籍数据
+  // 示例书籍数据（包含所有推荐书籍）
   private readonly books: BookDetail[] = [
+    // Banner 推荐
     {
       id: '1',
-      title: '西游记',
-      author: '吴承恩',
-      cover: 'https://img.qidian.com/covers/xyj.jpg',
-      description: '《西游记》是中国古代第一部浪漫主义章回体长篇神魔小说。该书以"唐僧取经"这一历史事件为蓝本，通过作者的艺术加工，深刻地描绘了当时的社会现实。',
-      category: '古典名著',
+      title: '斗破苍穹',
+      author: '天蚕土豆',
+      category: '玄幻',
+      description: '三十年河东，三十年河西，莫欺少年穷！',
+      chapterCount: 1648,
       status: 'completed',
-      chapterCount: 100,
       source: 'demo',
     },
     {
       id: '2',
-      title: '三国演义',
-      author: '罗贯中',
-      cover: 'https://img.qidian.com/covers/sgyy.jpg',
-      description: '《三国演义》是中国古典四大名著之一，是中国第一部长篇章回体历史演义小说，全名为《三国志通俗演义》。',
-      category: '古典名著',
+      title: '诡秘之主',
+      author: '爱潜水的乌贼',
+      category: '玄幻',
+      description: '蒸汽与机械的浪潮中，谁能触及非凡？',
+      chapterCount: 1432,
       status: 'completed',
-      chapterCount: 120,
       source: 'demo',
     },
     {
       id: '3',
-      title: '水浒传',
-      author: '施耐庵',
-      cover: 'https://img.qidian.com/covers/shz.jpg',
-      description: '《水浒传》是中国历史上第一部用白话文写成的章回小说，也是中国古典四大名著之一。',
-      category: '古典名著',
+      title: '遮天',
+      author: '辰东',
+      category: '仙侠',
+      description: '九具庞大的龙尸拉着一座古老的铜棺',
+      chapterCount: 1880,
       status: 'completed',
-      chapterCount: 120,
       source: 'demo',
     },
+    // 热门推荐
     {
       id: '4',
-      title: '红楼梦',
-      author: '曹雪芹',
-      cover: 'https://img.qidian.com/covers/hlm.jpg',
-      description: '《红楼梦》是中国古典四大名著之首，清代作家曹雪芹创作的章回体长篇小说。',
-      category: '古典名著',
-      status: 'completed',
-      chapterCount: 120,
+      title: '深空彼岸',
+      author: '辰东',
+      category: '玄幻',
+      description: '浩瀚的宇宙中，璀璨的星河之上',
+      chapterCount: 800,
+      status: 'ongoing',
       source: 'demo',
     },
     {
       id: '5',
-      title: '斗破苍穹',
-      author: '天蚕土豆',
-      description: '这是一个属于斗气的世界，没有花俏艳丽的魔法，有的，仅仅是繁衍到巅峰的斗气！',
-      category: '玄幻',
+      title: '大奉打更人',
+      author: '卖报小郎君',
+      category: '仙侠',
+      description: '这个世界，有儒、有佛、有妖、有术士',
+      chapterCount: 1200,
       status: 'completed',
-      chapterCount: 1648,
       source: 'demo',
     },
     {
       id: '6',
+      title: '凡人修仙传',
+      author: '忘语',
+      category: '仙侠',
+      description: '凡人流开创者，修仙小说巅峰之作',
+      chapterCount: 2446,
+      status: 'completed',
+      source: 'demo',
+    },
+    {
+      id: '7',
+      title: '剑来',
+      author: '烽火戏诸侯',
+      category: '仙侠',
+      description: '大千世界，无奇不有',
+      chapterCount: 1100,
+      status: 'ongoing',
+      source: 'demo',
+    },
+    {
+      id: '8',
+      title: '万相之王',
+      author: '天蚕土豆',
+      category: '玄幻',
+      description: '万相天骄，谁主沉浮',
+      chapterCount: 600,
+      status: 'ongoing',
+      source: 'demo',
+    },
+    {
+      id: '9',
+      title: '庆余年',
+      author: '猫腻',
+      category: '历史',
+      description: '积善之家，必有余庆',
+      chapterCount: 746,
+      status: 'completed',
+      source: 'demo',
+    },
+    // 新书上架
+    {
+      id: '10',
+      title: '灵境行者',
+      author: '卖报小郎君',
+      category: '仙侠',
+      description: '这是一个光怪陆离的世界',
+      chapterCount: 400,
+      status: 'ongoing',
+      source: 'demo',
+    },
+    {
+      id: '11',
+      title: '斗罗大陆V重生唐三',
+      author: '唐家三少',
+      category: '玄幻',
+      description: '一代神王唐三重生归来',
+      chapterCount: 500,
+      status: 'ongoing',
+      source: 'demo',
+    },
+    {
+      id: '12',
+      title: '星门',
+      author: '老鹰吃小鸡',
+      category: '都市',
+      description: '星门洞开，异兽入侵',
+      chapterCount: 350,
+      status: 'ongoing',
+      source: 'demo',
+    },
+    {
+      id: '13',
       title: '完美世界',
       author: '辰东',
-      description: '一粒尘可填海，一根草斩尽日月星辰，弹指间天翻地覆。',
       category: '玄幻',
-      status: 'completed',
+      description: '一粒尘可填海，一根草斩尽日月星辰',
       chapterCount: 2014,
+      status: 'completed',
+      source: 'demo',
+    },
+    {
+      id: '14',
+      title: '雪中悍刀行',
+      author: '烽火戏诸侯',
+      category: '仙侠',
+      description: '江湖儿女江湖见',
+      chapterCount: 1048,
+      status: 'completed',
+      source: 'demo',
+    },
+    {
+      id: '15',
+      title: '吞噬星空',
+      author: '我吃西红柿',
+      category: '科幻',
+      description: '未来，地球经历一场大灾变后',
+      chapterCount: 1511,
+      status: 'completed',
+      source: 'demo',
+    },
+    // 古典名著
+    {
+      id: '16',
+      title: '西游记',
+      author: '吴承恩',
+      category: '古典名著',
+      description: '《西游记》是中国古代第一部浪漫主义章回体长篇神魔小说',
+      chapterCount: 100,
+      status: 'completed',
+      source: 'demo',
+    },
+    {
+      id: '17',
+      title: '三国演义',
+      author: '罗贯中',
+      category: '古典名著',
+      description: '《三国演义》是中国古典四大名著之一',
+      chapterCount: 120,
+      status: 'completed',
+      source: 'demo',
+    },
+    {
+      id: '18',
+      title: '水浒传',
+      author: '施耐庵',
+      category: '古典名著',
+      description: '《水浒传》是中国历史上第一部用白话文写成的章回小说',
+      chapterCount: 120,
+      status: 'completed',
+      source: 'demo',
+    },
+    {
+      id: '19',
+      title: '红楼梦',
+      author: '曹雪芹',
+      category: '古典名著',
+      description: '《红楼梦》是中国古典四大名著之首',
+      chapterCount: 120,
+      status: 'completed',
       source: 'demo',
     },
   ];
+
+  // Banner 书籍 ID
+  private readonly bannerBookIds = ['1', '2', '3'];
+
+  // 热门推荐书籍 ID
+  private readonly hotBookIds = ['4', '5', '6', '7', '8', '9'];
+
+  // 新书上架书籍 ID
+  private readonly newBookIds = ['10', '11', '12', '13', '14', '15'];
+
+  // 热门搜索关键词
+  private readonly hotSearchKeywords = [
+    '斗破苍穹', '诡秘之主', '遮天', '深空彼岸',
+    '凡人修仙传', '剑来', '庆余年',
+  ];
+
+  // 默认书架书籍 ID
+  private readonly defaultBookshelfIds = ['1', '2', '6'];
+
+  // 获取推荐数据
+  getRecommendations() {
+    return {
+      banners: this.bannerBookIds.map(id => this.getBookSummary(id)),
+      hotBooks: this.hotBookIds.map(id => this.getBookSummary(id)),
+      newBooks: this.newBookIds.map(id => this.getBookSummary(id)),
+      hotSearch: this.hotSearchKeywords,
+      defaultBookshelf: this.defaultBookshelfIds.map(id => this.getBookSummary(id)),
+    };
+  }
+
+  // 获取书籍摘要（用于推荐列表）
+  private getBookSummary(id: string) {
+    const book = this.books.find(b => b.id === id);
+    if (!book) return null;
+    return {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      cover: book.cover,
+      category: book.category,
+      description: book.description,
+      chapterCount: book.chapterCount,
+      status: book.status,
+      source: 'demo',
+    };
+  }
 
   // 示例章节
   private readonly sampleChapters = [

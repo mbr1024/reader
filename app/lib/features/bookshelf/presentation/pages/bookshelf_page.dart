@@ -4,8 +4,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/local_book_service.dart';
+import '../../../../core/services/book_source_api.dart';
 import '../../../../core/models/bookshelf_item.dart';
-import '../../../../core/data/mock_data.dart';
 import '../../../../shared/utils/toast.dart';
 
 /// 书架页 - 简洁现代风格
@@ -31,16 +31,23 @@ class _BookshelfPageState extends State<BookshelfPage> {
 
   Future<void> _initBookshelf() async {
     if (_storage.getBookshelf().isEmpty) {
-      for (final book in MockData.defaultBookshelf) {
-        await _storage.addToBookshelf(BookshelfItem(
-          bookId: book.id,
-          sourceId: 'demo',
-          title: book.title,
-          author: book.author,
-          cover: book.cover,
-          category: book.category,
-          addedAt: DateTime.now(),
-        ));
+      // 从服务端获取默认书架
+      try {
+        final api = BookSourceApi();
+        final recommendations = await api.getRecommendations();
+        for (final book in recommendations.defaultBookshelf) {
+          await _storage.addToBookshelf(BookshelfItem(
+            bookId: book.id,
+            sourceId: book.source,
+            title: book.title,
+            author: book.author,
+            cover: book.cover,
+            category: book.category,
+            addedAt: DateTime.now(),
+          ));
+        }
+      } catch (e) {
+        debugPrint('获取默认书架失败: $e');
       }
     }
     _loadBookshelf();
@@ -100,59 +107,62 @@ class _BookshelfPageState extends State<BookshelfPage> {
 
       setState(() => _isImporting = true);
 
-      int successCount = 0;
-      int failCount = 0;
-      String lastTitle = '';
+      // 使用 Future.microtask 避免阻塞 UI
+      Future.microtask(() async {
+        int successCount = 0;
+        int failCount = 0;
+        String lastTitle = '';
 
-      for (final file in result.files) {
-        if (file.path == null) continue;
+        for (final file in result.files) {
+          if (file.path == null) continue;
 
-        try {
-          final importResult = await LocalBookService.instance.importBook(file.path!);
+          try {
+            final importResult = await LocalBookService.instance.importBook(file.path!);
 
-          // 检查是否已在书架
-          if (_storage.isInBookshelf(importResult.bookId)) {
-            // 已存在，跳过但不算失败
+            // 检查是否已在书架
+            if (_storage.isInBookshelf(importResult.bookId)) {
+              // 已存在，跳过但不算失败
+              lastTitle = importResult.title;
+              successCount++;
+              continue;
+            }
+
+            // 添加到书架
+            await _storage.addToBookshelf(BookshelfItem(
+              bookId: importResult.bookId,
+              sourceId: 'local',
+              title: importResult.title,
+              author: importResult.author,
+              category: '本地',
+              addedAt: DateTime.now(),
+              lastChapterTitle: '${importResult.chapterCount}章 · ${importResult.format.toUpperCase()}',
+            ));
+
             lastTitle = importResult.title;
             successCount++;
-            continue;
+          } catch (e) {
+            failCount++;
+            debugPrint('导入失败: ${file.name} - $e');
+          }
+        }
+
+        if (mounted) {
+          _loadBookshelf();
+          setState(() => _isImporting = false);
+
+          // 显示结果
+          String message;
+          if (successCount == 1 && failCount == 0) {
+            message = '已导入《$lastTitle》';
+          } else if (failCount == 0) {
+            message = '成功导入 $successCount 本书';
+          } else {
+            message = '导入 $successCount 本，失败 $failCount 本';
           }
 
-          // 添加到书架
-          await _storage.addToBookshelf(BookshelfItem(
-            bookId: importResult.bookId,
-            sourceId: 'local',
-            title: importResult.title,
-            author: importResult.author,
-            category: '本地',
-            addedAt: DateTime.now(),
-            lastChapterTitle: '${importResult.chapterCount}章 · ${importResult.format.toUpperCase()}',
-          ));
-
-          lastTitle = importResult.title;
-          successCount++;
-        } catch (e) {
-          failCount++;
-          debugPrint('导入失败: ${file.name} - $e');
+          Toast.show(context, message);
         }
-      }
-
-      if (mounted) {
-        _loadBookshelf();
-        setState(() => _isImporting = false);
-
-        // 显示结果
-        String message;
-        if (successCount == 1 && failCount == 0) {
-          message = '已导入《$lastTitle》';
-        } else if (failCount == 0) {
-          message = '成功导入 $successCount 本书';
-        } else {
-          message = '导入 $successCount 本，失败 $failCount 本';
-        }
-
-        Toast.show(context, message);
-      }
+      });
     } catch (e) {
       if (mounted) {
         setState(() => _isImporting = false);
@@ -1086,13 +1096,25 @@ class _BookshelfPageState extends State<BookshelfPage> {
               title: '移除书架',
               isDestructive: true,
               onTap: () async {
-                await _storage.removeFromBookshelf(book.bookId);
-                // 如果是本地书籍，同时清理所有章节数据
-                if (isLocal) {
-                  await LocalBookService.instance.clearBook(book.bookId);
+                // 先关闭弹窗，避免阻塞 UI
+                Navigator.pop(context);
+                
+                // 显示加载提示
+                if (mounted) {
+                  Toast.show(context, '正在移除...');
                 }
-                _loadBookshelf();
-                if (context.mounted) Navigator.pop(context);
+                
+                // 异步删除，不阻塞主线程
+                Future.microtask(() async {
+                  await _storage.removeFromBookshelf(book.bookId);
+                  // 如果是本地书籍，同时清理所有章节数据
+                  if (isLocal) {
+                    await LocalBookService.instance.clearBook(book.bookId);
+                  }
+                  if (mounted) {
+                    _loadBookshelf();
+                  }
+                });
               },
             ),
             const SizedBox(height: 16),
