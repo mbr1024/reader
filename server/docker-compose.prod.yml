@@ -68,7 +68,7 @@ services:
 
   # Webhook 服务 - 接收 Gitee 推送事件触发自动部署
   webhook:
-    image: almir/webhook
+    image: almir/webhook:2.8.0
     container_name: reader-webhook
     restart: unless-stopped
     ports:
