@@ -8,7 +8,6 @@ import '../../features/settings/presentation/pages/my_page.dart';
 import '../../features/settings/presentation/pages/settings_detail_page.dart';
 import '../../features/settings/presentation/pages/reading_history_page.dart';
 import '../../features/settings/presentation/pages/bookmark_page.dart';
-import '../../features/settings/presentation/pages/sync_page.dart';
 import '../../features/reader/presentation/pages/reader_page.dart';
 import '../../features/book_detail/presentation/pages/book_detail_page.dart';
 import '../../features/rank/presentation/pages/rank_page.dart';
@@ -75,12 +74,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/bookmarks',
       builder: (context, state) => const BookmarkPage(),
-    ),
-
-    // 云端同步页面
-    GoRoute(
-      path: '/sync',
-      builder: (context, state) => const SyncPage(),
     ),
 
     // 排行榜页面

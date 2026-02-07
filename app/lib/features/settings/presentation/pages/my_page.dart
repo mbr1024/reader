@@ -194,10 +194,6 @@ class _MyPageState extends State<MyPage> {
               icon: Icons.bookmark_outline, title: '我的书签',
               onTap: () => context.push('/bookmarks'),
             ),
-            _MenuItem(
-              icon: Icons.cloud_outlined, title: '云端同步',
-              onTap: () => context.push('/sync'),
-            ),
           ]),
           const SizedBox(height: 24),
           _buildMenuGroup([

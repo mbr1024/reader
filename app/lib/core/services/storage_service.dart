@@ -1,6 +1,7 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../constants/storage_keys.dart';
 import '../models/bookshelf_item.dart';
+import '../models/bookmark_item.dart';
 import '../models/reading_progress.dart';
 import '../models/reader_settings.dart';
 
@@ -19,6 +20,7 @@ class StorageService {
   late Box<String> _localBooksBox; // bookId -> filePath
   late Box<String> _localChaptersIndexBox; // bookId -> JSON章节标题列表
   late Box<String> _localChaptersContentBox; // bookId_idx -> 章节内容
+  late Box<BookmarkItem> _bookmarkBox; // 书签
   
   bool _initialized = false;
   
@@ -36,6 +38,9 @@ class StorageService {
     if (!Hive.isAdapterRegistered(2)) {
       Hive.registerAdapter(ReaderSettingsAdapter());
     }
+    if (!Hive.isAdapterRegistered(3)) {
+      Hive.registerAdapter(BookmarkItemAdapter());
+    }
     
     // 打开 Boxes
     _authBox = await Hive.openBox<String>(StorageKeys.authBox);
@@ -45,6 +50,7 @@ class StorageService {
     _localBooksBox = await Hive.openBox<String>(StorageKeys.localBooksBox);
     _localChaptersIndexBox = await Hive.openBox<String>(StorageKeys.localChaptersIndexBox);
     _localChaptersContentBox = await Hive.openBox<String>(StorageKeys.localChaptersContentBox);
+    _bookmarkBox = await Hive.openBox<BookmarkItem>(StorageKeys.bookmarkBox);
     
     _initialized = true;
   }
@@ -189,5 +195,52 @@ class StorageService {
       await _localChaptersContentBox.deleteAll(keysToDelete);
     }
     await _localBooksBox.delete(bookId);
+  }
+
+  // ============ 书签相关 ============
+
+  /// 获取所有书签
+  List<BookmarkItem> getAllBookmarks() {
+    return _bookmarkBox.values.toList();
+  }
+
+  /// 获取某本书的所有书签
+  List<BookmarkItem> getBookmarksByBookId(String bookId) {
+    return _bookmarkBox.values
+        .where((b) => b.bookId == bookId)
+        .toList();
+  }
+
+  /// 添加书签
+  Future<void> addBookmark(BookmarkItem item) async {
+    await _bookmarkBox.put(item.id, item);
+  }
+
+  /// 更新书签（如更新备注）
+  Future<void> updateBookmark(BookmarkItem item) async {
+    await _bookmarkBox.put(item.id, item);
+  }
+
+  /// 删除书签
+  Future<void> removeBookmark(String id) async {
+    await _bookmarkBox.delete(id);
+  }
+
+  /// 清空所有书签
+  Future<void> clearAllBookmarks() async {
+    await _bookmarkBox.clear();
+  }
+
+  /// 删除某本书的所有书签
+  Future<void> removeBookmarksByBookId(String bookId) async {
+    final keysToDelete = _bookmarkBox.keys
+        .where((key) {
+          final item = _bookmarkBox.get(key);
+          return item?.bookId == bookId;
+        })
+        .toList();
+    if (keysToDelete.isNotEmpty) {
+      await _bookmarkBox.deleteAll(keysToDelete);
+    }
   }
 }

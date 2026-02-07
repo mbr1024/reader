@@ -63,12 +63,6 @@ class SettingsPage extends StatelessWidget {
           // 账户
           _buildSectionTitle('账户'),
           _buildSettingItem(
-            icon: Icons.sync,
-            title: '同步数据',
-            subtitle: '上次同步: 今天 10:30',
-            onTap: () {},
-          ),
-          _buildSettingItem(
             icon: Icons.logout,
             title: '退出登录',
             onTap: () {

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/models/bookmark_item.dart';
 import '../../../../shared/utils/toast.dart';
 
 /// 书签管理页面
@@ -11,7 +14,8 @@ class BookmarkPage extends StatefulWidget {
 }
 
 class _BookmarkPageState extends State<BookmarkPage> {
-  List<Map<String, dynamic>> _bookmarks = [];
+  final _storage = StorageService.instance;
+  List<BookmarkItem> _bookmarks = [];
   bool _isLoading = true;
   String? _selectedBookId;
 
@@ -22,64 +26,30 @@ class _BookmarkPageState extends State<BookmarkPage> {
   }
 
   void _loadBookmarks() {
-    // 模拟加载书签数据
-    // 实际应从本地存储或API获取
+    final bookmarks = _storage.getAllBookmarks();
+    // 按创建时间倒序排列
+    bookmarks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     setState(() {
-      _bookmarks = [
-        {
-          'id': '1',
-          'bookId': 'book1',
-          'bookTitle': '斗破苍穹',
-          'chapterIndex': 100,
-          'chapterTitle': '第一百章 炼药',
-          'position': 1500,
-          'content': '萧炎看着手中的丹药，嘴角微微上扬...',
-          'note': '精彩的炼药场景',
-          'createdAt': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-        },
-        {
-          'id': '2',
-          'bookId': 'book1',
-          'bookTitle': '斗破苍穹',
-          'chapterIndex': 150,
-          'chapterTitle': '第一百五十章 对决',
-          'position': 2000,
-          'content': '一道青色火焰从萧炎手中升起...',
-          'note': '',
-          'createdAt': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
-        },
-        {
-          'id': '3',
-          'bookId': 'book2',
-          'bookTitle': '完美世界',
-          'chapterIndex': 50,
-          'chapterTitle': '第五十章 蛮荒',
-          'position': 800,
-          'content': '石昊望着远方的群山，心中充满期待...',
-          'note': '开始冒险',
-          'createdAt': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
-        },
-      ];
+      _bookmarks = bookmarks;
       _isLoading = false;
     });
   }
 
   // 按书籍分组
-  Map<String, List<Map<String, dynamic>>> get _groupedBookmarks {
-    final grouped = <String, List<Map<String, dynamic>>>{};
+  Map<String, List<BookmarkItem>> get _groupedBookmarks {
+    final grouped = <String, List<BookmarkItem>>{};
     for (final bookmark in _bookmarks) {
-      final bookId = bookmark['bookId'] as String;
-      grouped.putIfAbsent(bookId, () => []);
-      grouped[bookId]!.add(bookmark);
+      grouped.putIfAbsent(bookmark.bookId, () => []);
+      grouped[bookmark.bookId]!.add(bookmark);
     }
     return grouped;
   }
 
-  void _editNote(Map<String, dynamic> bookmark) {
-    final controller = TextEditingController(text: bookmark['note'] ?? '');
+  void _editNote(BookmarkItem bookmark) {
+    final controller = TextEditingController(text: bookmark.note ?? '');
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('编辑备注'),
         content: TextField(
@@ -92,19 +62,18 @@ class _BookmarkPageState extends State<BookmarkPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('取消', style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                final index = _bookmarks.indexWhere((b) => b['id'] == bookmark['id']);
-                if (index != -1) {
-                  _bookmarks[index]['note'] = controller.text;
-                }
-              });
-              Toast.show(context, '备注已更新');
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              final updated = bookmark.copyWith(note: controller.text);
+              await _storage.updateBookmark(updated);
+              _loadBookmarks();
+              if (mounted) {
+                Toast.show(context, '备注已更新');
+              }
             },
             child: const Text('保存'),
           ),
@@ -113,11 +82,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  String _formatTime(String? isoString) {
-    if (isoString == null) return '';
-    final time = DateTime.tryParse(isoString);
-    if (time == null) return '';
-
+  String _formatTime(DateTime time) {
     final now = DateTime.now();
     final diff = now.difference(time);
 
@@ -186,14 +151,14 @@ class _BookmarkPageState extends State<BookmarkPage> {
       itemBuilder: (context, index) {
         final bookId = bookIds[index];
         final bookmarks = grouped[bookId]!;
-        final bookTitle = bookmarks.first['bookTitle'] as String;
+        final bookTitle = bookmarks.first.bookTitle;
 
         return _buildBookSection(bookId, bookTitle, bookmarks);
       },
     );
   }
 
-  Widget _buildBookSection(String bookId, String title, List<Map<String, dynamic>> bookmarks) {
+  Widget _buildBookSection(String bookId, String title, List<BookmarkItem> bookmarks) {
     final isExpanded = _selectedBookId == null || _selectedBookId == bookId;
 
     return Column(
@@ -255,9 +220,9 @@ class _BookmarkPageState extends State<BookmarkPage> {
     );
   }
 
-  Widget _buildBookmarkItem(Map<String, dynamic> bookmark) {
+  Widget _buildBookmarkItem(BookmarkItem bookmark) {
     return Dismissible(
-      key: Key(bookmark['id']),
+      key: Key(bookmark.id),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -265,16 +230,17 @@ class _BookmarkPageState extends State<BookmarkPage> {
         color: AppColors.error,
         child: const Icon(Icons.delete, color: Colors.white),
       ),
-      onDismissed: (_) {
-        setState(() {
-          _bookmarks.removeWhere((b) => b['id'] == bookmark['id']);
-        });
-        Toast.show(context, '书签已删除');
+      onDismissed: (_) async {
+        await _storage.removeBookmark(bookmark.id);
+        _loadBookmarks();
+        if (mounted) {
+          Toast.show(context, '书签已删除');
+        }
       },
       child: InkWell(
         onTap: () {
           // 跳转到阅读页面对应位置
-          Toast.show(context, '跳转到: ${bookmark['chapterTitle']}');
+          context.push('/reader/${bookmark.sourceId}/${bookmark.bookId}/${bookmark.chapterIndex}');
         },
         onLongPress: () => _editNote(bookmark),
         child: Container(
@@ -296,7 +262,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      bookmark['chapterTitle'] ?? '',
+                      bookmark.chapterTitle,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -305,7 +271,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                     ),
                   ),
                   Text(
-                    _formatTime(bookmark['createdAt']),
+                    _formatTime(bookmark.createdAt),
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppColors.textHint,
@@ -313,7 +279,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                   ),
                 ],
               ),
-              if (bookmark['content'] != null && (bookmark['content'] as String).isNotEmpty) ...[
+              if (bookmark.content.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -322,7 +288,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    bookmark['content'],
+                    bookmark.content,
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -333,7 +299,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                   ),
                 ),
               ],
-              if (bookmark['note'] != null && (bookmark['note'] as String).isNotEmpty) ...[
+              if (bookmark.note != null && bookmark.note!.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -341,7 +307,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        bookmark['note'],
+                        bookmark.note!,
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textMuted,
